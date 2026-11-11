@@ -4,7 +4,7 @@ An offline .NET 10 / Avalonia 12 desktop workbench for local image-forensics exp
 
 ## Run on Windows x64
 
-Open **`artifacts/win-x64-v1.2.0/PixelTrace.exe`**. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
+Open **`artifacts/win-x64-v1.2.1/PixelTrace.exe`**. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
 
 1. **Open image** (Ctrl+O) opens an Insiyab dialog. Pick/drop/paste an image using the library's FileUpload, choose the method and block/ELA settings, then **Analyze**. Cancel preserves the current image and results.
 2. The result appears over one image. **Show original**, beside the filename, shows the source while held; release to restore the overlay.
@@ -24,7 +24,7 @@ Requires the .NET 10 SDK. The first restore downloads dependencies; running the 
 dotnet restore PixelTrace.slnx
 dotnet build PixelTrace.slnx -c Release --no-restore
 dotnet test PixelTrace.slnx -c Release
-dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.2.0
+dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.2.1
 dotnet run --project src/PixelTrace.Desktop
 ```
 

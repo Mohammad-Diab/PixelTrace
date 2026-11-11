@@ -1,4 +1,4 @@
-param([string]$PublishDirectory = 'artifacts/win-x64-v1.2.0')
+param([string]$PublishDirectory = 'artifacts/win-x64-v1.2.1')
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $evidence = Join-Path $root 'artifacts\verification\crash-fix'

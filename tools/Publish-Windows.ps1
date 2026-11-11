@@ -1,4 +1,4 @@
-param([string]$OutputDirectory = 'artifacts/win-x64-v1.2.0')
+param([string]$OutputDirectory = 'artifacts/win-x64-v1.2.1')
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Push-Location $projectRoot

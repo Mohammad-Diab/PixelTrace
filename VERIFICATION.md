@@ -28,6 +28,10 @@ The persistent color guide identifies purple as lower, teal as moderate and yell
 
 The new publish is in `artifacts/win-x64-v1.1.0` so an already-running older version can keep its files open. The native Windows workflow verified all six maps and PNG export, then captured the original while Space was held and the overlay after release. Normal window closure returned exit code 0, stderr was empty and no crash log was produced. Captures and exports are under `artifacts/verification/light-ui`.
 
+## 1.2.1 upload text clipping
+
+The upload field now uses the font's natural line height and removes the picker text's negative bottom margin. This preserves Arabic letter tops and diacritics without replacing Insiyab's FileUpload. All 9 desktop workflow tests passed again. The published application was opened in Arabic and English on Windows, both upload dialogs were captured in `artifacts/verification/v1.2.1`, and normal closure returned exit code 0.
+
 ## 1.2.0 analysis setup and bilingual layout
 
 The toolbar now opens an Insiyab Dialog containing its FileUpload, method selection and analysis settings. Reanalyze locks the current file and reuses decoded pixels; Cancel leaves applied settings, the image and completed results intact. Image selection and expensive analysis commit as one operation. The trailing Save result button appears on analysis start and stays disabled until a completed result is ready. Stream-backed and clipboard images use the same guarded decoder as files.

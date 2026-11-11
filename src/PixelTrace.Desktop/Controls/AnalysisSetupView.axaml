@@ -1,6 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ins="using:Insiyab.Avalonia.Controls" xmlns:vm="using:PixelTrace.Desktop.ViewModels"
              x:Class="PixelTrace.Desktop.Controls.AnalysisSetupView" x:DataType="vm:AnalysisDraft">
+  <UserControl.Styles>
+    <!-- The upload template's fixed Latin line heights clip Tajawal's Arabic marks. -->
+    <Style Selector="ins|FileUpload /template/ :is(TextBlock)">
+      <Setter Property="LineHeight" Value="NaN" />
+    </Style>
+    <Style Selector="ins|FileUpload /template/ :is(Border)#PART_Pick > :is(TextBlock)">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+  </UserControl.Styles>
   <StackPanel Spacing="17">
     <ins:FileUpload x:Name="ImageFile" Accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff,.webp" MaxSize="256MB" Multiple="False" IsEnabled="{Binding CanChooseFile}" AutomationProperties.AutomationId="ImageFileField" AutomationProperties.Name="{Binding Text[ChooseImage]}" />
     <TextBlock Text="{Binding Text[CurrentImage]}" IsVisible="{Binding IsReanalysis}" Classes="muted" FontSize="11" />
