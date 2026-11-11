@@ -4,14 +4,16 @@ An offline .NET 10 / Avalonia 12 desktop workbench for local image-forensics exp
 
 ## Run on Windows x64
 
-Open **`artifacts/win-x64/PixelTrace.exe`**. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
+Open **`artifacts/win-x64-v1.1.0/PixelTrace.exe`** for the current light, single-view interface. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
 
 1. **Open Image**, then **Analyze** (F5).
-2. Compare the original and combined heatmap. Select any individual method to inspect its evidence and limitations.
-3. Adjust sensitivity and opacity; expand **Analysis settings** to adjust combination weights. These changes reuse cached scores. Block size and ELA JPEG quality take effect on the next Analyze.
+2. The heatmap appears over the same image. Hold **Hold for original** to see the source; release to return to the overlay. Select an individual method to inspect its signal.
+3. Adjust sensitivity and opacity using the compact control row. **Options** contains block size, ELA quality and method explanations. Visualization changes reuse cached scores; block size and ELA quality apply on the next Analyze.
 4. **Save Result** (Ctrl+S) exports the selected overlay as a full-resolution PNG. The source file cannot be overwritten.
 
-The wheel zooms about the pointer; drag to pan. Fit, 1:1 and +/- buttons control both views. With a viewer focused, 0 fits, 1 shows one image pixel per physical screen pixel, +/- zoom and arrow keys pan. Hover to read pixel coordinates and block intensity. Pan and zoom stay synchronized.
+The interface uses Insiyab's light theme and one image viewer. The app name and subtitle share a single title-bar pill. The wheel zooms about the pointer; drag to pan. With the viewer focused, 0 fits, 1 shows one image pixel per physical screen pixel, +/- zoom and arrow keys pan. Holding the original preserves the current pan/zoom and does not rerun analysis; Space or Enter works while the comparison button is focused.
+
+The **Color guide** stays visible below the image: purple means lower local differences, teal moderate differences, and yellow higher differences. Hovering the image marks the inspected block on that scale using the current sensitivity. Masked regions remain unchanged; intensity is not an AI probability or a verdict on authenticity.
 
 ## Build and verify
 
@@ -21,7 +23,7 @@ Requires the .NET 10 SDK. The first restore downloads dependencies; running the 
 dotnet restore PixelTrace.slnx
 dotnet build PixelTrace.slnx -c Release --no-restore
 dotnet test PixelTrace.slnx -c Release
-dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64
+dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.1.0
 dotnet run --project src/PixelTrace.Desktop
 ```
 
@@ -60,6 +62,6 @@ Each method compares nearby regions with compatible texture and luminance, suppl
 
 ## Source layout
 
-`src/PixelTrace.Core` owns loading, independent signal calculations, normalization, combination and export. `src/PixelTrace.Desktop` contains view models, the Insiyab window and the synchronized inline image canvas. `tests/PixelTrace.Tests` contains focused engine tests; `tests/PixelTrace.Desktop.Tests` covers UI lifetimes, rendering and synchronized navigation. Windows is the tested runtime target. Core and UI use portable APIs; a Linux/macOS build needs the corresponding OpenCvSharp native runtime package and platform validation.
+`src/PixelTrace.Core` owns loading, independent signal calculations, normalization, combination and export. `src/PixelTrace.Desktop` contains view models, the Insiyab window, the inline image canvas and its color legend. `tests/PixelTrace.Tests` contains focused engine tests; `tests/PixelTrace.Desktop.Tests` covers UI lifetimes, rendering, momentary comparison and navigation. Windows is the tested runtime target. Core and UI use portable APIs; a Linux/macOS build needs the corresponding OpenCvSharp native runtime package and platform validation.
 
-The UI follows the [Insiyab documentation](https://github.com/Mohammad-Diab/insiyab-ui/tree/avalonia-v0.3.2/packages/avalonia) and [gallery examples](https://github.com/Mohammad-Diab/insiyab-ui/tree/avalonia-v0.3.2/packages/avalonia/gallery/Insiyab.Avalonia.Gallery). It uses the official theme, toolbar, buttons, fields, progress, surfaces, typography and icons. Insiyab's supplied picture viewer is modal and its zoom canvas is internal; PixelTrace's small inline canvas supplies the required side-by-side synchronized workflow. The library is consumed from NuGet and is unmodified.
+The UI follows the [Insiyab documentation](https://github.com/Mohammad-Diab/insiyab-ui/tree/avalonia-v0.3.2/packages/avalonia) and [gallery examples](https://github.com/Mohammad-Diab/insiyab-ui/tree/avalonia-v0.3.2/packages/avalonia/gallery/Insiyab.Avalonia.Gallery). It uses the official theme, toolbar, buttons, fields, progress, surfaces, typography and icons. Insiyab's supplied picture viewer is modal and its zoom canvas is internal; PixelTrace's small inline canvas provides single-image inspection. The library is consumed from NuGet and is unmodified.

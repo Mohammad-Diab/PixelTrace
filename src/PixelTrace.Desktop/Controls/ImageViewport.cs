@@ -8,7 +8,7 @@ namespace PixelTrace.Desktop.Controls;
 
 public readonly record struct ViewState(double Zoom, Point Center, bool Fitted);
 
-// Insiyab's PictureViewer is modal; this canvas supplies synchronized inline inspection.
+// Insiyab's PictureViewer is modal; this canvas supplies inline image inspection.
 // All surrounding controls, surfaces, icons and typography use Insiyab.
 public sealed class ImageViewport : Control
 {
@@ -52,11 +52,6 @@ public sealed class ImageViewport : Control
     public void Fit() { _zoom = FitZoom; _center = new(.5, .5); _fitted = true; Publish(); }
     public void ActualSize() { _zoom = 1 / Scaling; _fitted = false; Clamp(); Publish(); }
     public void Step(int direction) => ZoomTo(_zoom * Math.Pow(1.25, direction), new(Bounds.Width / 2, Bounds.Height / 2));
-    public void Apply(ViewState state)
-    {
-        _fitted = state.Fitted; _zoom = _fitted ? FitZoom : state.Zoom; _center = state.Center;
-        Clamp(); InvalidateVisual();
-    }
 
     private Rect Destination
     {

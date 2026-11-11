@@ -24,7 +24,8 @@ public sealed class MainViewModel : ObservableObject
     private Task _workTask = Task.CompletedTask;
     private int _renderVersion;
     private readonly SemaphoreSlim _renderGate = new(1, 1);
-    private bool _busy, _rendering, _closing;
+    private bool _busy, _rendering, _closing, _showOriginal;
+    private double? _hoverIntensity;
     private double _progress, _opacity = .6, _sensitivity = 1;
     private int _blockSize = 32, _elaQuality = 90;
     private string _status = "Open an image to begin.", _error = "", _pixel = "Wheel to zoom · drag to pan · 0 fit · 1 actual size";
@@ -45,6 +46,20 @@ public sealed class MainViewModel : ObservableObject
     public int[] ElaQualities { get; } = [75, 85, 90, 95, 100];
     public WriteableBitmap? Original => _original;
     public WriteableBitmap? Result => _result ?? _original;
+    public WriteableBitmap? DisplayImage => IsShowingOriginal ? Original : Result;
+    public bool CanCompare => _original is not null && _result is not null && CurrentMap is { Available: true } && !_closing;
+    public bool IsShowingOriginal
+    {
+        get => _showOriginal;
+        set
+        {
+            if (Set(ref _showOriginal, value && CanCompare))
+            {
+                Changed(nameof(DisplayImage)); Changed(nameof(HoverIntensity));
+            }
+        }
+    }
+    public double? HoverIntensity => IsShowingOriginal ? null : _hoverIntensity;
     public bool HasImage => _image is not null;
     public bool HasResults => _analysis is not null;
     public bool IsBusy { get => _busy; private set { if (Set(ref _busy, value)) NotifyState(); } }
@@ -74,7 +89,7 @@ public sealed class MainViewModel : ObservableObject
     public MethodChoice SelectedMethod
     {
         get => _selected;
-        set { if (value is not null && Set(ref _selected, value)) { NotifyResult(); QueueRender(); } }
+        set { if (value is not null && Set(ref _selected, value)) { ClearInspection(); NotifyResult(); QueueRender(); } }
     }
     public ScoreMap? CurrentMap => _analysis is not null && _analysis.Maps.TryGetValue(SelectedMethod.Kind, out var map) ? map : null;
 
@@ -98,6 +113,7 @@ public sealed class MainViewModel : ObservableObject
             token.ThrowIfCancellationRequested();
             var oldImage = _image; var oldOriginal = _original; var oldResult = _result;
             _image = next; _original = bitmap; _result = null; _analysis = null;
+            IsShowingOriginal = false; ClearInspection();
             next = null; bitmap = null;
             NotifyImage();
             oldImage?.Dispose(); oldOriginal?.Dispose(); oldResult?.Dispose();
@@ -175,7 +191,7 @@ public sealed class MainViewModel : ObservableObject
                 var image = _image!; var map = CurrentMap!;
                 if (!map.Available)
                 {
-                    var previous = _result; _result = null; Changed(nameof(Result)); previous?.Dispose(); return;
+                    ReplaceResult(null); return;
                 }
                 var settings = new VisualizationSettings(Opacity, Sensitivity);
                 bitmap = await Task.Run(() =>
@@ -185,7 +201,7 @@ public sealed class MainViewModel : ObservableObject
                     return BitmapFactory.Create(rendered);
                 }, token);
                 token.ThrowIfCancellationRequested();
-                var old = _result; _result = bitmap; bitmap = null; Changed(nameof(Result)); old?.Dispose();
+                ReplaceResult(bitmap); bitmap = null;
             }
             finally { _renderGate.Release(); }
         }
@@ -200,6 +216,13 @@ public sealed class MainViewModel : ObservableObject
         await _renderTask;
         // Earlier cancelled renders can still be leaving a non-interruptible native call.
         await _renderGate.WaitAsync(); _renderGate.Release();
+    }
+
+    private void ReplaceResult(WriteableBitmap? bitmap)
+    {
+        var old = _result; _result = bitmap;
+        NotifyState(); Changed(nameof(Result)); Changed(nameof(DisplayImage));
+        old?.Dispose();
     }
 
     private void Recombine()
@@ -222,12 +245,21 @@ public sealed class MainViewModel : ObservableObject
             5 => (y, x), 6 => (y, height - 1 - x), 7 => (width - 1 - y, height - 1 - x), 8 => (width - 1 - y, x), _ => (x, y)
         };
         string text = $"x {x:N0} · y {y:N0}";
-        if (CurrentMap is { Available: true } map && rx >= 0 && ry >= 0 && rx < width && ry < height)
+        double? intensity = null;
+        if (!IsShowingOriginal && CurrentMap is { Available: true } map && rx >= 0 && ry >= 0 && rx < width && ry < height)
         {
             int i = ry / map.BlockSize * map.Columns + rx / map.BlockSize;
             text += map.Validity[i] > .05f ? $" · block intensity {map.Scores[i]:0.000} (0–1 scale, not probability)" : " · masked: insufficient evidence";
+            if (map.Validity[i] > .05f) intensity = map.Scores[i];
         }
+        _hoverIntensity = intensity; Changed(nameof(HoverIntensity));
         PixelReadout = text;
+    }
+
+    public void ClearInspection()
+    {
+        _hoverIntensity = null; Changed(nameof(HoverIntensity));
+        PixelReadout = "Scroll to zoom · drag to pan";
     }
 
     public async Task ShutdownAsync()
@@ -236,9 +268,10 @@ public sealed class MainViewModel : ObservableObject
         await _workTask; await StopRenderAsync();
         var image = _image; var original = _original; var result = _result;
         _image = null; _original = null; _result = null;
-        // Unbind both viewers while the bitmaps are still alive. Native close/resize/pointer events
+        IsShowingOriginal = false; ClearInspection();
+        // Unbind the viewer while the bitmaps are still alive. Native close/resize/pointer events
         // can otherwise inspect a bitmap or Mat whose native resources have already been released.
-        Changed(nameof(Original)); Changed(nameof(Result));
+        Changed(nameof(Original)); Changed(nameof(Result)); Changed(nameof(DisplayImage));
         image?.Dispose(); original?.Dispose(); result?.Dispose();
         _work?.Dispose(); _renderCancellation?.Dispose(); _renderGate.Dispose();
     }
@@ -246,7 +279,7 @@ public sealed class MainViewModel : ObservableObject
     private void SettingsChanged() { if (HasResults) Status = "Block size / ELA quality changed. Click Analyze to apply; the displayed result keeps its previous settings."; }
     private void NotifyImage()
     {
-        foreach (var n in new[] { nameof(Original), nameof(Result), nameof(HasImage), nameof(FileName), nameof(FileDetails), nameof(SourceNote) }) Changed(n);
+        foreach (var n in new[] { nameof(Original), nameof(Result), nameof(DisplayImage), nameof(HasImage), nameof(FileName), nameof(FileDetails), nameof(SourceNote) }) Changed(n);
         NotifyResult(); NotifyState();
     }
     private void NotifyResult()
@@ -254,7 +287,11 @@ public sealed class MainViewModel : ObservableObject
         foreach (var n in new[] { nameof(HasResults), nameof(MethodTitle), nameof(MethodDescription), nameof(AnalysisNote), nameof(AnalysisDetails), nameof(Coverage), nameof(MethodUnavailable) }) Changed(n);
         NotifyState();
     }
-    private void NotifyState() { Changed(nameof(CanOpen)); Changed(nameof(CanAnalyze)); Changed(nameof(CanSave)); Changed(nameof(CanAdjust)); }
+    private void NotifyState()
+    {
+        if (!CanCompare) IsShowingOriginal = false;
+        Changed(nameof(CanOpen)); Changed(nameof(CanAnalyze)); Changed(nameof(CanSave)); Changed(nameof(CanAdjust)); Changed(nameof(CanCompare));
+    }
     private static string FriendlyError(Exception e) => e is OutOfMemoryException ? "Not enough memory. Try a smaller copy of the image." :
         e is DllNotFoundException or TypeInitializationException ? "OpenCV could not start. Keep the complete Windows publish folder, including OpenCvSharpExtern.dll. Windows N/Server also requires the Media Foundation OS feature. " + e.GetBaseException().Message : e.Message;
 }

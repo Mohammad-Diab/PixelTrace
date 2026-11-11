@@ -122,7 +122,7 @@ foreach ($method in @('Noise consistency', 'Frequency analysis', 'Compression ar
     $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
     $methodBox.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Collapse()
     if ([IO.Path]::GetExtension($InputImage) -notmatch '^\.jpe?g$' -and $method -in @('Compression artifacts', 'Error level analysis')) {
-        [void](Wait-For { Find-Element $window 'JPEG input required' $null } 'non-JPEG method qualification')
+        [void](Wait-For { Find-Element $window 'JPEG input required for this method. Showing the original.' $null } 'non-JPEG method qualification')
         continue
     }
     [void](Wait-For {

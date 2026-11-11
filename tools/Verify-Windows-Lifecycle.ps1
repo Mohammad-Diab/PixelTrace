@@ -1,3 +1,4 @@
+param([string]$PublishDirectory = 'artifacts/win-x64-v1.1.0')
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $evidence = Join-Path $root 'artifacts\verification\crash-fix'
@@ -7,7 +8,7 @@ $env:PIXELTRACE_LOG_DIRECTORY = Join-Path $evidence 'diagnostics'
 $report = @()
 try {
     foreach ($case in @('empty', 'analysis-close', 'full-workflow-close')) {
-        $process = Start-Process -FilePath (Join-Path $root 'artifacts\win-x64\PixelTrace.exe') -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $evidence "$case-stderr.log") -RedirectStandardOutput (Join-Path $evidence "$case-stdout.log")
+        $process = Start-Process -FilePath (Join-Path $root "$PublishDirectory\PixelTrace.exe") -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardError (Join-Path $evidence "$case-stderr.log") -RedirectStandardOutput (Join-Path $evidence "$case-stdout.log")
         $processHandle = $process.Handle
         Write-Output "Started $case (PID $($process.Id))."
         if ($case -eq 'empty') {

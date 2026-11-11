@@ -3,7 +3,11 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Input.Raw;
+using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Avalonia.LogicalTree;
 using OpenCvSharp;
 using PixelTrace.Core.Analysis;
 using PixelTrace.Desktop;
@@ -77,13 +81,12 @@ public sealed class WorkflowTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task ClosingDuringAnalysisOrRenderingDetachesTheViewersBeforeReleasingImages()
+    public async Task ClosingDuringAnalysisOrRenderingDetachesTheViewerBeforeReleasingImages()
     {
         for (int mode = 0; mode < 3; mode++)
         {
             var window = new MainWindow(); window.Show(); var model = (MainViewModel)window.DataContext!;
-            var left = window.FindControl<ImageViewport>("OriginalViewer")!;
-            var right = window.FindControl<ImageViewport>("ResultViewer")!;
+            var viewer = window.FindControl<ImageViewport>("Viewer")!;
             bool closed = false; window.Closed += (_, _) => closed = true;
             try
             {
@@ -92,7 +95,7 @@ public sealed class WorkflowTests : IDisposable
                 if (mode > 0) await analysis;
                 if (mode == 2) await Rendered(model);
                 await Close(window); await analysis;
-                Assert.Null(left.Source); Assert.Null(right.Source);
+                Assert.Null(viewer.Source);
                 Assert.Null(model.Original); Assert.Null(model.Result);
                 model.InspectPixel(10, 10); // Late native pointer events must not access a disposed Mat.
                 Assert.False(model.CanOpen); Assert.False(model.CanAnalyze); Assert.False(model.CanSave);
@@ -102,7 +105,7 @@ public sealed class WorkflowTests : IDisposable
     }
 
     [AvaloniaFact]
-    public async Task InvalidReplacementPreservesTheLoadedImageAndZoomStaysSynchronized()
+    public async Task InvalidReplacementPreservesTheLoadedImageAndViewportNavigation()
     {
         var window = new MainWindow(); window.Show(); var model = (MainViewModel)window.DataContext!;
         try
@@ -112,21 +115,79 @@ public sealed class WorkflowTests : IDisposable
             await model.OpenAsync(Path.Combine(_folder, "missing.png"));
             Assert.True(model.HasError); Assert.Same(original, model.Original); Assert.True(model.CanAnalyze);
             model.DismissError();
-            var left = window.FindControl<ImageViewport>("OriginalViewer")!;
-            var right = window.FindControl<ImageViewport>("ResultViewer")!;
-            left.ActualSize(); left.Step(1); Frame();
-            Assert.Equal(left.State.Zoom, right.State.Zoom); Assert.Equal(left.State.Center, right.State.Center);
-            right.Step(-1); Assert.Equal(left.State.Zoom, right.State.Zoom);
-            var center = left.TranslatePoint(new Avalonia.Point(left.Bounds.Width / 2, left.Bounds.Height / 2), window)!.Value;
+            var viewer = window.FindControl<ImageViewport>("Viewer")!;
+            viewer.ActualSize(); viewer.Step(1); Frame();
+            double previousZoom = viewer.State.Zoom;
+            var center = viewer.TranslatePoint(new Avalonia.Point(viewer.Bounds.Width / 2, viewer.Bounds.Height / 2), window)!.Value;
             window.MouseMove(center); window.MouseWheel(center, new Vector(0, 1)); Frame();
-            Assert.Equal(left.State.Zoom, right.State.Zoom);
-            var previousCenter = left.State.Center;
+            Assert.True(viewer.State.Zoom > previousZoom);
+            var previousCenter = viewer.State.Center;
             window.MouseDown(center, MouseButton.Left);
             window.MouseMove(center + new Vector(50, 30));
             window.MouseUp(center + new Vector(50, 30), MouseButton.Left); Frame();
-            Assert.NotEqual(previousCenter, left.State.Center); Assert.Equal(left.State.Center, right.State.Center);
-            left.Fit(); window.Width = 1200; Frame();
-            Assert.True(left.State.Fitted); Assert.True(right.State.Fitted); Assert.Equal(left.State.Center, right.State.Center);
+            Assert.NotEqual(previousCenter, viewer.State.Center);
+            viewer.Fit(); window.Width = 1100; Frame();
+            Assert.True(viewer.State.Fitted);
+        }
+        finally { await Close(window); }
+    }
+
+    [AvaloniaFact]
+    public async Task LightWindowHasOneViewerAndTheDescriptionInsideTheBrandPill()
+    {
+        var window = new MainWindow(); window.Show(); Frame();
+        try
+        {
+            Assert.Equal(ThemeVariant.Light, window.ActualThemeVariant);
+            Assert.Single(window.GetVisualDescendants().OfType<ImageViewport>());
+            var pill = window.FindControl<Border>("BrandPill")!;
+            var name = window.FindControl<TextBlock>("AppName")!;
+            var description = window.FindControl<TextBlock>("AppDescription")!;
+            Assert.Contains(pill, name.GetLogicalAncestors());
+            Assert.Contains(pill, description.GetLogicalAncestors());
+            Assert.True(description.TranslatePoint(default, pill)!.Value.Y > name.TranslatePoint(default, pill)!.Value.Y);
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Purple · Lower");
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Yellow · Higher");
+        }
+        finally { await Close(window); }
+    }
+
+    [AvaloniaFact]
+    public async Task HoldingOriginalWithMouseOrKeyboardIsMomentaryAndPreservesZoomAndScores()
+    {
+        var window = new MainWindow(); window.Show(); var model = (MainViewModel)window.DataContext!;
+        try
+        {
+            Assert.False(model.CanCompare);
+            await model.OpenAsync(Fixture(".jpg", 801, 601));
+            var viewer = window.FindControl<ImageViewport>("Viewer")!;
+            Assert.Same(model.Original, viewer.Source); Assert.False(model.CanCompare);
+            await model.AnalyzeAsync(); await Rendered(model); Frame();
+            var overlay = viewer.Source; var raw = model.CurrentMap!.RawScores;
+            Assert.Same(model.Result, overlay); Assert.NotSame(model.Original, overlay);
+            var compare = window.FindControl<Button>("CompareButton")!;
+            viewer.ActualSize(); viewer.Step(1); Frame();
+            var before = viewer.State;
+            var press = compare.TranslatePoint(new Avalonia.Point(compare.Bounds.Width / 2, compare.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(press); window.MouseDown(press, MouseButton.Left); Frame();
+            Assert.True(model.IsShowingOriginal); Assert.Same(model.Original, viewer.Source);
+            // Releasing outside the button must still restore the overlay.
+            var outside = viewer.TranslatePoint(new Avalonia.Point(20, 20), window)!.Value;
+            window.MouseMove(outside); Assert.True(model.IsShowingOriginal);
+            window.MouseUp(outside, MouseButton.Left); Frame();
+            Assert.False(model.IsShowingOriginal); Assert.Same(overlay, viewer.Source); Assert.Equal(before, viewer.State);
+            compare.Focus(); window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " "); Frame();
+            Assert.True(model.IsShowingOriginal); Assert.Same(model.Original, viewer.Source);
+            window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " "); Frame();
+            Assert.False(model.IsShowingOriginal); Assert.Same(overlay, viewer.Source);
+            Assert.Same(raw, model.CurrentMap.RawScores); Assert.Equal(before, viewer.State);
+            model.InspectPixel(200, 200);
+            var legend = window.FindControl<HeatmapLegend>("Legend")!;
+            Assert.NotNull(legend.Score); Assert.Equal(model.HoverIntensity, legend.Score);
+            model.IsShowingOriginal = true; Assert.Null(legend.Score);
+            model.IsShowingOriginal = false; Assert.NotNull(legend.Score);
+            await model.OpenAsync(Fixture(".png", 801, 601)); Frame();
+            Assert.False(model.IsShowingOriginal); Assert.False(model.CanCompare); Assert.Same(model.Original, viewer.Source); Assert.Null(legend.Score);
         }
         finally { await Close(window); }
     }

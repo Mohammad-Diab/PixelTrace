@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using PixelTrace.Desktop.Controls;
@@ -11,24 +12,28 @@ namespace PixelTrace.Desktop;
 public sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _model = new();
-    private bool _syncing, _shutdown, _closing;
+    private bool _shutdown, _closing;
 
     public MainWindow()
     {
         InitializeComponent(); DataContext = _model;
-        OriginalViewer.ViewChanged += state => Synchronize(OriginalViewer, ResultViewer, state);
-        ResultViewer.ViewChanged += state => Synchronize(ResultViewer, OriginalViewer, state);
-        OriginalViewer.PixelHovered += _model.InspectPixel;
-        ResultViewer.PixelHovered += _model.InspectPixel;
+        Viewer.ViewChanged += _ => ViewZoom.Text = Viewer.ZoomText;
+        Viewer.PixelHovered += _model.InspectPixel;
+        Viewer.PointerExited += (_, _) => _model.ClearInspection();
+        CompareButton.AddHandler(PointerPressedEvent, ComparePressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        CompareButton.AddHandler(PointerReleasedEvent, (_, _) => _model.IsShowingOriginal = false, RoutingStrategies.Tunnel, handledEventsToo: true);
+        CompareButton.PointerCaptureLost += (_, _) => _model.IsShowingOriginal = false;
+        CompareButton.LostFocus += (_, _) => _model.IsShowingOriginal = false;
+        CompareButton.AddHandler(KeyDownEvent, (_, e) => { if (e.Key is Key.Space or Key.Enter) _model.IsShowingOriginal = true; }, RoutingStrategies.Tunnel, handledEventsToo: true);
+        CompareButton.AddHandler(KeyUpEvent, (_, e) => { if (e.Key is Key.Space or Key.Enter) _model.IsShowingOriginal = false; }, RoutingStrategies.Tunnel, handledEventsToo: true);
+        Deactivated += (_, _) => _model.IsShowingOriginal = false;
         Closing += OnClosing;
     }
 
-    private void Synchronize(ImageViewport from, ImageViewport to, ViewState state)
+    private void ComparePressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_syncing) return;
-        _syncing = true;
-        try { to.Apply(state); SourceZoom.Text = from.ZoomText; }
-        finally { _syncing = false; }
+        if (e.Pointer.Type == PointerType.Touch || e.GetCurrentPoint(CompareButton).Properties.IsLeftButtonPressed)
+            _model.IsShowingOriginal = true;
     }
 
     private async void OpenClick(object? sender, RoutedEventArgs e)
@@ -43,7 +48,7 @@ public sealed partial class MainWindow : Window
             });
             if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
             {
-                await _model.OpenAsync(path); OriginalViewer.Fit(); ResultViewer.Fit();
+                await _model.OpenAsync(path); Viewer.Fit();
             }
         }
         catch (Exception error) { CrashLog.Write(error, "Open Image"); _model.ReportError(error); }
@@ -65,10 +70,10 @@ public sealed partial class MainWindow : Window
     }
     private async void AnalyzeClick(object? sender, RoutedEventArgs e) => await _model.AnalyzeAsync();
     private void CancelClick(object? sender, RoutedEventArgs e) => _model.Cancel();
-    private void FitClick(object? sender, RoutedEventArgs e) { OriginalViewer.Fit(); ResultViewer.Fit(); }
-    private void ActualClick(object? sender, RoutedEventArgs e) => OriginalViewer.ActualSize();
-    private void ZoomOutClick(object? sender, RoutedEventArgs e) => OriginalViewer.Step(-1);
-    private void ZoomInClick(object? sender, RoutedEventArgs e) => OriginalViewer.Step(1);
+    private void FitClick(object? sender, RoutedEventArgs e) => Viewer.Fit();
+    private void ActualClick(object? sender, RoutedEventArgs e) => Viewer.ActualSize();
+    private void ZoomOutClick(object? sender, RoutedEventArgs e) => Viewer.Step(-1);
+    private void ZoomInClick(object? sender, RoutedEventArgs e) => Viewer.Step(1);
     private void DismissErrorClick(object? sender, RoutedEventArgs e) => _model.DismissError();
 
     private async void OnClosing(object? sender, WindowClosingEventArgs e)
@@ -77,6 +82,7 @@ public sealed partial class MainWindow : Window
         e.Cancel = true;
         if (_closing) return;
         _closing = true;
+        _model.IsShowingOriginal = false;
         try { await _model.ShutdownAsync(); }
         catch (Exception error) { CrashLog.Write(error, "window cleanup"); }
         _shutdown = true;
