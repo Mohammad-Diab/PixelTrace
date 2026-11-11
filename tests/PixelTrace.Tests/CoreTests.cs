@@ -249,6 +249,18 @@ public sealed class CoreTests : IDisposable
     }
 
     [Fact]
+    public void InMemoryImageUsesTheSameDecoderAndDoesNotModifyItsBytes()
+    {
+        using var fixture = Fixture(113, 79); Cv2.ImEncode(".png", fixture, out var bytes);
+        var before = SHA256.HashData(bytes);
+        using var image = ImageDocument.LoadBytes(bytes, "clipboard.png");
+        Assert.Equal(113, image.Width); Assert.Equal(79, image.Height);
+        Assert.Equal(0, Cv2.Norm(fixture, image.Pixels, NormTypes.INF));
+        Assert.Equal(before, SHA256.HashData(bytes));
+        Assert.Throws<InvalidDataException>(() => ImageDocument.LoadBytes([], "empty.png"));
+    }
+
+    [Fact]
     public void LargeRasterCapsTheGridWithoutResizingTheExport()
     {
         // Just above the 65,536-cell threshold for 16px blocks (~16.8 MP).

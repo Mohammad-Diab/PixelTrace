@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ins="using:Insiyab.Avalonia.Controls" xmlns:vm="using:PixelTrace.Desktop.ViewModels"
+             x:Class="PixelTrace.Desktop.Controls.AnalysisSetupView" x:DataType="vm:AnalysisDraft">
+  <StackPanel Spacing="17">
+    <ins:FileUpload x:Name="ImageFile" Accept=".jpg,.jpeg,.png,.bmp,.tif,.tiff,.webp" MaxSize="256MB" Multiple="False" IsEnabled="{Binding CanChooseFile}" AutomationProperties.AutomationId="ImageFileField" AutomationProperties.Name="{Binding Text[ChooseImage]}" />
+    <TextBlock Text="{Binding Text[CurrentImage]}" IsVisible="{Binding IsReanalysis}" Classes="muted" FontSize="11" />
+    <StackPanel Classes="field">
+      <TextBlock Text="{Binding Text[Method]}" Classes="label" />
+      <ComboBox x:Name="MethodField" ItemsSource="{Binding Methods}" SelectedItem="{Binding Method}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Text[Method]}" />
+    </StackPanel>
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+      <StackPanel Classes="field"><TextBlock Text="{Binding Text[BlockSize]}" Classes="label" /><ComboBox ItemsSource="{Binding BlockSizes}" SelectedItem="{Binding BlockSize}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Text[BlockSize]}" /></StackPanel>
+      <StackPanel Grid.Column="1" Classes="field"><TextBlock Text="{Binding Text[ElaQuality]}" Classes="label" /><ComboBox ItemsSource="{Binding ElaQualities}" SelectedItem="{Binding ElaQuality}" HorizontalAlignment="Stretch" AutomationProperties.Name="{Binding Text[ElaQuality]}" /></StackPanel>
+    </Grid>
+    <TextBlock Text="{Binding Validation}" Foreground="{DynamicResource InsToneBad}" FontSize="12" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

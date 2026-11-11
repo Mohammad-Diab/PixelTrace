@@ -3,6 +3,8 @@ using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.Data;
+using Insiyab.Avalonia.Controls;
 using PixelTrace.Desktop.Controls;
 using PixelTrace.Desktop.Diagnostics;
 using PixelTrace.Desktop.ViewModels;
@@ -13,6 +15,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly MainViewModel _model = new();
     private bool _shutdown, _closing;
+    public Dialog? ActiveAnalysisDialog { get; private set; }
 
     public MainWindow()
     {
@@ -41,17 +44,40 @@ public sealed partial class MainWindow : Window
         if (!_model.CanOpen) return;
         try
         {
-            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Open image for inspection", AllowMultiple = false,
-                FileTypeFilter = [new FilePickerFileType("Supported images") { Patterns = ["*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tif", "*.tiff", "*.webp"] }, FilePickerFileTypes.All]
-            });
-            if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
-            {
-                await _model.OpenAsync(path); Viewer.Fit();
-            }
+            await ShowAnalysisSetupAsync((Control?)sender ?? OpenButton, false);
         }
         catch (Exception error) { CrashLog.Write(error, "Open Image"); _model.ReportError(error); }
+    }
+    private async void ReanalyzeClick(object? sender, RoutedEventArgs e)
+    {
+        if (!_model.CanAnalyze) return;
+        try { await ShowAnalysisSetupAsync((Control?)sender ?? ReanalyzeButton, true); }
+        catch (Exception error) { CrashLog.Write(error, "Reanalyze"); _model.ReportError(error); }
+    }
+    public async Task ShowAnalysisSetupAsync(Control anchor, bool reanalysis)
+    {
+        if (ActiveAnalysisDialog is not null || !_model.CanOpen) return;
+        var draft = _model.CreateDraft(reanalysis);
+        var cancel = new Button { Content = draft.Text["Cancel"], Classes = { "secondary" } };
+        var analyze = new Button { Content = draft.Text["Analyze"], Classes = { "primary" } };
+        Dialog.SetResult(cancel, false); Dialog.SetResult(analyze, true);
+        analyze.Bind(IsEnabledProperty, new Binding(nameof(AnalysisDraft.CanSubmit)) { Source = draft });
+        var dialog = new Dialog
+        {
+            Title = draft.Text[reanalysis ? "Reanalyze" : "Setup"], DataContext = draft,
+            FlowDirection = _model.Direction, Content = new AnalysisSetupView(draft),
+            Foot = new DialogFoot { Children = { cancel, analyze } },
+            MinWidth = 420, MaxWidth = 520, ClosedBy = DialogClosedBy.CloseRequest
+        };
+        ActiveAnalysisDialog = dialog;
+        object? result;
+        try { result = await dialog.ShowAsync(anchor); }
+        finally { ActiveAnalysisDialog = null; }
+        if (result is true && draft.CanSubmit && !_closing)
+        {
+            await _model.ExecuteDraftAsync(draft);
+            if (!reanalysis) Viewer.Fit();
+        }
     }
     private async void SaveClick(object? sender, RoutedEventArgs e)
     {
@@ -60,7 +86,7 @@ public sealed partial class MainWindow : Window
         {
             var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "Save forensic visualization", DefaultExtension = "png", ShowOverwritePrompt = true,
+                Title = _model.Text["Save"], DefaultExtension = "png", ShowOverwritePrompt = true,
                 SuggestedFileName = Path.GetFileNameWithoutExtension(_model.FileName) + "-" + _model.SelectedMethod.Kind.ToString().ToLowerInvariant() + ".png",
                 FileTypeChoices = [new FilePickerFileType("PNG image") { Patterns = ["*.png"] }]
             });
@@ -68,7 +94,8 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception error) { CrashLog.Write(error, "Save Result"); _model.ReportError(error); }
     }
-    private async void AnalyzeClick(object? sender, RoutedEventArgs e) => await _model.AnalyzeAsync();
+    private void LanguageClick(object? sender, RoutedEventArgs e) { _model.IsShowingOriginal = false; _model.ToggleLanguage(); }
+    private void DefaultClick(object? sender, RoutedEventArgs e) => _model.ResetDisplay();
     private void CancelClick(object? sender, RoutedEventArgs e) => _model.Cancel();
     private void FitClick(object? sender, RoutedEventArgs e) => Viewer.Fit();
     private void ActualClick(object? sender, RoutedEventArgs e) => Viewer.ActualSize();
@@ -82,6 +109,7 @@ public sealed partial class MainWindow : Window
         e.Cancel = true;
         if (_closing) return;
         _closing = true;
+        ActiveAnalysisDialog?.Close(false);
         _model.IsShowingOriginal = false;
         try { await _model.ShutdownAsync(); }
         catch (Exception error) { CrashLog.Write(error, "window cleanup"); }

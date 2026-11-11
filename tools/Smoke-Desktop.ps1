@@ -87,65 +87,66 @@ function Verify-Export {
 $window = Wait-For {
     foreach ($item in (Windows)) { if ($item.Current.Name -like 'PixelTrace*') { return $item } }
 } 'main window'
-$pendingSave = Find-Element $window 'Save forensic visualization' ([System.Windows.Automation.ControlType]::Window)
-if ($pendingSave) {
-    [PixelTraceFileDialog]::Choose([IntPtr]$pendingSave.Current.NativeWindowHandle, $OutputImage)
-    [void](Wait-For { Test-Path -LiteralPath $OutputImage } 'PNG export')
-    Write-Output "Saved through native picker: $OutputImage"
-    Verify-Export
-    if ($CloseAtEnd) { & (Join-Path $PSScriptRoot 'Close-Desktop.ps1') -ProcessId $ProcessId }
-    exit 0
-}
-$alreadyOpen = Find-Element $window 'Open image for inspection' ([System.Windows.Automation.ControlType]::Window)
-if (!$alreadyOpen) { Invoke-Button $window 'Open Image' }
-Write-Output 'Open Image invoked.'
-$dialog = Wait-For {
-    Find-Element $window 'Open image for inspection' ([System.Windows.Automation.ControlType]::Window)
-} 'open file dialog'
-[PixelTraceFileDialog]::Choose([IntPtr]$dialog.Current.NativeWindowHandle, $InputImage)
-[void](Wait-For { Find-Element $window 'Image ready. Click Analyze to inspect local inconsistencies.' $null } 'image decode')
-Write-Output 'Image loaded through the native picker.'
+if (!(Find-Element $window 'Analyze image' $null)) { Invoke-Button $window 'Open image' }
+[void](Wait-For { Find-Element $window 'Analyze image' $null } 'analysis setup')
+$fileField = Find-Element $window 'Choose an image' $null
+if ($fileField) { $fileField.SetFocus() }
+[void][PixelTraceFileDialog]::PostMessage([IntPtr]$window.Current.NativeWindowHandle, 0x100, [IntPtr]13, [IntPtr]0)
+[void][PixelTraceFileDialog]::PostMessage([IntPtr]$window.Current.NativeWindowHandle, 0x101, [IntPtr]13, [IntPtr]0)
+$picker = Wait-For { Find-Element $window 'Open' ([System.Windows.Automation.ControlType]::Window) } 'native file picker'
+[PixelTraceFileDialog]::Choose([IntPtr]$picker.Current.NativeWindowHandle, $InputImage)
+[void](Wait-For {
+    $analyze = Find-Element $window 'Analyze' ([System.Windows.Automation.ControlType]::Button)
+    if ($analyze -and $analyze.Current.IsEnabled) { return $analyze }
+} 'selected file')
+Write-Output 'File selected through Insiyab FileUpload.'
 Invoke-Button $window 'Analyze'
 if ($CloseDuringAnalysis) {
     & (Join-Path $PSScriptRoot 'Close-Desktop.ps1') -ProcessId $ProcessId
     exit 0
 }
 [void](Wait-For {
-    $save = Find-Element $window 'Save Result' ([System.Windows.Automation.ControlType]::Button)
+    $save = Find-Element $window 'Save result' ([System.Windows.Automation.ControlType]::Button)
     if ($save -and $save.Current.IsEnabled) { return $save }
-} 'analysis and heatmap rendering')
-Write-Output 'All five analyses completed; Save Result enabled.'
-$methodBox = Find-Element $window 'Analysis method' ([System.Windows.Automation.ControlType]::ComboBox)
-foreach ($method in @('Noise consistency', 'Frequency analysis', 'Compression artifacts', 'Texture & edges', 'Error level analysis', 'Combined heatmap')) {
-    $methodBox.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-    $item = Wait-For { Find-Element $window $method ([System.Windows.Automation.ControlType]::ListItem) } "method item $method"
+} 'analysis and visualization')
+Write-Output 'Analysis completed; trailing Save result enabled.'
+$resultBox = Find-Element $window 'Result' ([System.Windows.Automation.ControlType]::ComboBox)
+$maps = @('Noise','Frequency','Texture & edges','Combined')
+if ([IO.Path]::GetExtension($InputImage) -match '^\.jpe?g$') { $maps = @('Noise','Frequency','Compression','Texture & edges','ELA','Combined') }
+foreach ($map in $maps) {
+    $resultBox.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+    $item = Wait-For { Find-Element $window $map ([System.Windows.Automation.ControlType]::ListItem) } "result $map"
     $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-    $methodBox.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Collapse()
-    if ([IO.Path]::GetExtension($InputImage) -notmatch '^\.jpe?g$' -and $method -in @('Compression artifacts', 'Error level analysis')) {
-        [void](Wait-For { Find-Element $window 'JPEG input required for this method. Showing the original.' $null } 'non-JPEG method qualification')
-        continue
-    }
+    $resultBox.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Collapse()
     [void](Wait-For {
-        $save = Find-Element $window 'Save Result' ([System.Windows.Automation.ControlType]::Button)
+        $save = Find-Element $window 'Save result' ([System.Windows.Automation.ControlType]::Button)
         if ($save -and $save.Current.IsEnabled) { return $save }
-    } "render $method")
+    } "render $map")
 }
-Write-Output 'Switched through every individual map and back to the combined map.'
+Invoke-Button $window 'Reanalyze'
+[void](Wait-For { Find-Element $window 'Current image (locked)' $null } 'locked reanalysis source')
+$lockedFile = Find-Element $window 'Choose an image' $null
+if ($lockedFile -and $lockedFile.Current.IsEnabled) { throw 'Reanalysis must lock the input image.' }
+Invoke-Button $window 'Cancel'
+[void](Wait-For {
+    $save = Find-Element $window 'Save result' ([System.Windows.Automation.ControlType]::Button)
+    if ($save -and $save.Current.IsEnabled) { return $save }
+} 'cancelled setup retains result')
+Write-Output 'Result switching and locked-source reanalysis/cancel verified.'
 Invoke-Button $window '1:1'
 Invoke-Button $window 'Zoom in'
 Invoke-Button $window 'Fit'
-$slider = Find-Element $window 'Heatmap opacity' ([System.Windows.Automation.ControlType]::Slider)
-$slider.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue(0.72)
-$sensitivity = Find-Element $window 'Heatmap sensitivity' ([System.Windows.Automation.ControlType]::Slider)
+$opacity = Find-Element $window 'Opacity' ([System.Windows.Automation.ControlType]::Slider)
+$sensitivity = Find-Element $window 'Sensitivity' ([System.Windows.Automation.ControlType]::Slider)
+$opacity.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue(0.72)
 $sensitivity.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue(1.4)
-Write-Output 'Fit, actual size, zoom, opacity and sensitivity exercised.'
-Start-Sleep -Milliseconds 750
-Invoke-Button $window 'Save Result'
-$saveDialog = Wait-For {
-    Find-Element $window 'Save forensic visualization' ([System.Windows.Automation.ControlType]::Window)
-} 'save file dialog'
+Invoke-Button $window 'Default'
+if ([Math]::Abs($opacity.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).Current.Value - 0.6) -gt 0.001) { throw 'Default opacity failed' }
+if ([Math]::Abs($sensitivity.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).Current.Value - 1) -gt 0.001) { throw 'Default sensitivity failed' }
+Start-Sleep -Milliseconds 500
+Invoke-Button $window 'Save result'
+$saveDialog = Wait-For { Find-Element $window 'Save result' ([System.Windows.Automation.ControlType]::Window) } 'save picker'
 [PixelTraceFileDialog]::Choose([IntPtr]$saveDialog.Current.NativeWindowHandle, $OutputImage)
 [void](Wait-For { Test-Path -LiteralPath $OutputImage } 'PNG export')
-Write-Output "Saved through native picker: $OutputImage"
 Verify-Export
 if ($CloseAtEnd) { & (Join-Path $PSScriptRoot 'Close-Desktop.ps1') -ProcessId $ProcessId }

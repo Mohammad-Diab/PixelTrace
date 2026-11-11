@@ -30,6 +30,7 @@ public sealed class ImageViewport : Control
     public ImageViewport()
     {
         ClipToBounds = true; Focusable = true;
+        FlowDirection = FlowDirection.LeftToRight;
         Cursor = new Cursor(StandardCursorType.Cross);
         RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.HighQuality);
     }

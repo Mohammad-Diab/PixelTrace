@@ -4,14 +4,15 @@ An offline .NET 10 / Avalonia 12 desktop workbench for local image-forensics exp
 
 ## Run on Windows x64
 
-Open **`artifacts/win-x64-v1.1.0/PixelTrace.exe`** for the current light, single-view interface. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
+Open **`artifacts/win-x64-v1.2.0/PixelTrace.exe`**. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
 
-1. **Open Image**, then **Analyze** (F5).
-2. The heatmap appears over the same image. Hold **Hold for original** to see the source; release to return to the overlay. Select an individual method to inspect its signal.
-3. Adjust sensitivity and opacity using the compact control row. **Options** contains block size, ELA quality and method explanations. Visualization changes reuse cached scores; block size and ELA quality apply on the next Analyze.
-4. **Save Result** (Ctrl+S) exports the selected overlay as a full-resolution PNG. The source file cannot be overwritten.
+1. **Open image** (Ctrl+O) opens an Insiyab dialog. Pick/drop/paste an image using the library's FileUpload, choose the method and block/ELA settings, then **Analyze**. Cancel preserves the current image and results.
+2. The result appears over one image. **Show original**, beside the filename, shows the source while held; release to restore the overlay.
+3. **Reanalyze** (F5) opens the same dialog with the current file locked. It reuses the retained pixels. A single method runs independently; **All signals** runs all applicable methods. Switch already-computed results instantly from the side panel.
+4. The side panel holds sensitivity, opacity and zoom. Endpoint labels explain stronger/subtler differences and original/overlay visibility. **Default** resets only sensitivity (1×) and opacity (60%).
+5. **Save result** (Ctrl+S) appears at the end of the toolbar after analysis starts and enables when the result is ready. It exports full-resolution PNG without overwriting the source.
 
-The interface uses Insiyab's light theme and one image viewer. The app name and subtitle share a single title-bar pill. The wheel zooms about the pointer; drag to pan. With the viewer focused, 0 fits, 1 shows one image pixel per physical screen pixel, +/- zoom and arrow keys pan. Holding the original preserves the current pan/zoom and does not rerun analysis; Space or Enter works while the comparison button is focused.
+The language pill switches English/Arabic. English controls sit on the right; Arabic controls sit on the left, while image pixels remain unmirrored. Insiyab's **DayNight** control provides the animated light/dark switch. The compact brand pill matches the native caption-pill height. Scroll to zoom; drag to pan. With the viewer focused, 0 fits, 1 shows actual size, +/- zoom and arrow keys pan. Holding the original preserves pan/zoom and cached analysis; Space/Enter works with the comparison button focused.
 
 The **Color guide** stays visible below the image: purple means lower local differences, teal moderate differences, and yellow higher differences. Hovering the image marks the inspected block on that scale using the current sensitivity. Masked regions remain unchanged; intensity is not an AI probability or a verdict on authenticity.
 
@@ -23,7 +24,7 @@ Requires the .NET 10 SDK. The first restore downloads dependencies; running the 
 dotnet restore PixelTrace.slnx
 dotnet build PixelTrace.slnx -c Release --no-restore
 dotnet test PixelTrace.slnx -c Release
-dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.1.0
+dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.2.0
 dotnet run --project src/PixelTrace.Desktop
 ```
 

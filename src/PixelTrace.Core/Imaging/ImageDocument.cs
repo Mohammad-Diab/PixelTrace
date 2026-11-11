@@ -23,8 +23,24 @@ public sealed class ImageDocument : IDisposable
         if (info.Length > 256L * 1024 * 1024) throw new InvalidDataException("The encoded file exceeds the 256 MB safety limit.");
         token.ThrowIfCancellationRequested();
         byte[] bytes = File.ReadAllBytes(path);
+        return Decode(bytes, System.IO.Path.GetFullPath(path), token);
+    }
+
+    public static ImageDocument LoadBytes(byte[] bytes, string name, CancellationToken token = default)
+    {
+        if (bytes.Length == 0 || bytes.Length > 256L * 1024 * 1024)
+            throw new InvalidDataException("Empty image or encoded data above 256 MB.");
+        return Decode(bytes, "memory://" + System.IO.Path.GetFileName(name), token);
+    }
+
+    private static ImageDocument Decode(byte[] bytes, string source, CancellationToken token)
+    {
         var header = ImageHeader.Read(bytes);
-        if (header.Format == "TIFF" && header.Orientation != 1) ImageHeader.NeutralizeTiffOrientation(bytes);
+        if (header.Format == "TIFF" && header.Orientation != 1)
+        {
+            bytes = (byte[])bytes.Clone();
+            ImageHeader.NeutralizeTiffOrientation(bytes);
+        }
         token.ThrowIfCancellationRequested();
         try
         {
@@ -45,7 +61,7 @@ public sealed class ImageDocument : IDisposable
                 else if (eight.Channels() == 4) { CompositeAlpha(eight, bgr, token); note += "Transparency composited on neutral gray. "; }
                 else throw new InvalidDataException("Unsupported image channel layout.");
                 token.ThrowIfCancellationRequested();
-                return new(System.IO.Path.GetFullPath(path), header, bgr, note.Trim());
+                return new(source, header, bgr, note.Trim());
             }
             catch { bgr.Dispose(); throw; }
         }
