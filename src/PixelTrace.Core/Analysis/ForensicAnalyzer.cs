@@ -60,7 +60,8 @@ public sealed class ForensicAnalyzer
             ? $" Approximate last JPEG quality: {q} (IJG table match). Prior compression history cannot be recovered."
             : " Nonstandard JPEG quantization tables; compression quality and prior history are unknown.";
         watch.Stop(); progress?.Report(new(100, "Analysis complete"));
-        return new(maps, image.Pixels.Width, image.Pixels.Height, block, options.ElaQuality, watch.Elapsed, note);
+        var result = new AnalysisResult(maps, image.Pixels.Width, image.Pixels.Height, block, options.ElaQuality, watch.Elapsed, note);
+        return result with { Summary = AnalysisSummary.Create(result, image.Header.Orientation, token) };
     }
 
     private static unsafe BlockFeatures Extract(Mat gray, int x, int y, int block, bool frequency)

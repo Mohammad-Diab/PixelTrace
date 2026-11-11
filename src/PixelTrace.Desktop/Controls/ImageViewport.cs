@@ -13,6 +13,7 @@ public readonly record struct ViewState(double Zoom, Point Center, bool Fitted);
 public sealed class ImageViewport : Control
 {
     public static readonly StyledProperty<Bitmap?> SourceProperty = AvaloniaProperty.Register<ImageViewport, Bitmap?>(nameof(Source));
+    public static readonly StyledProperty<Rect?> ReviewBoundsProperty = AvaloniaProperty.Register<ImageViewport, Rect?>(nameof(ReviewBounds));
     private double _zoom = 1;
     private Point _center = new(.5, .5);
     private bool _fitted = true;
@@ -20,13 +21,14 @@ public sealed class ImageViewport : Control
     private Point _dragCenter;
     private PixelSize _sourceSize;
     public Bitmap? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
+    public Rect? ReviewBounds { get => GetValue(ReviewBoundsProperty); set => SetValue(ReviewBoundsProperty, value); }
     public event Action<ViewState>? ViewChanged;
     public event Action<int, int>? PixelHovered;
     public ViewState State => new(_zoom, _center, _fitted);
     public string ZoomText => Source is null ? "—" : $"{_zoom * Scaling * 100:0}%";
     private double Scaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
 
-    static ImageViewport() => AffectsRender<ImageViewport>(SourceProperty);
+    static ImageViewport() => AffectsRender<ImageViewport>(SourceProperty, ReviewBoundsProperty);
     public ImageViewport()
     {
         ClipToBounds = true; Focusable = true;
@@ -53,6 +55,14 @@ public sealed class ImageViewport : Control
     public void Fit() { _zoom = FitZoom; _center = new(.5, .5); _fitted = true; Publish(); }
     public void ActualSize() { _zoom = 1 / Scaling; _fitted = false; Clamp(); Publish(); }
     public void Step(int direction) => ZoomTo(_zoom * Math.Pow(1.25, direction), new(Bounds.Width / 2, Bounds.Height / 2));
+    public void FocusRegion(Rect region)
+    {
+        if (Source is not { } source || region.Width <= 0 || region.Height <= 0) return;
+        _zoom = Math.Clamp(Math.Min(Math.Max(1, Bounds.Width - 64) / region.Width,
+            Math.Max(1, Bounds.Height - 64) / region.Height), FitZoom, 4 / Scaling);
+        _center = new(region.Center.X / source.PixelSize.Width, region.Center.Y / source.PixelSize.Height);
+        _fitted = false; Clamp(); Publish();
+    }
 
     private Rect Destination
     {
@@ -69,7 +79,17 @@ public sealed class ImageViewport : Control
         base.Render(context);
         // Transparent hit surface keeps pan and wheel available around a fitted image.
         context.DrawRectangle(Brushes.Transparent, null, new Rect(Bounds.Size));
-        if (Source is { } s) context.DrawImage(s, new Rect(s.Size), Destination);
+        if (Source is { } s)
+        {
+            var dest = Destination;
+            context.DrawImage(s, new Rect(s.Size), dest);
+            if (ReviewBounds is { } r)
+            {
+                var frame = new Rect(dest.X + r.X * _zoom, dest.Y + r.Y * _zoom, r.Width * _zoom, r.Height * _zoom);
+                context.DrawRectangle(null, new Pen(Brushes.Black, 4), frame);
+                context.DrawRectangle(null, new Pen(Brushes.White, 2), frame);
+            }
+        }
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)

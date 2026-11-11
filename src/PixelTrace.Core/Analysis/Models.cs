@@ -18,6 +18,9 @@ public sealed record ScoreMap(AnalysisMethod Method, int Columns, int Rows, int 
 }
 
 public sealed record AnalysisResult(IReadOnlyDictionary<AnalysisMethod, ScoreMap> Maps,
-    int RasterWidth, int RasterHeight, int BlockSize, int ElaQuality, TimeSpan Elapsed, string Note);
+    int RasterWidth, int RasterHeight, int BlockSize, int ElaQuality, TimeSpan Elapsed, string Note)
+{
+    public AnalysisSummary? Summary { get; init; }
+}
 
 public sealed record AnalysisProgress(double Value, string Message);

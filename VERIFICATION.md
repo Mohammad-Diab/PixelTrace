@@ -3,7 +3,7 @@
 Verified on Windows x64 with .NET SDK 10.0.404 / runtime 10.0.15, Avalonia 12.1.3, Insiyab.Avalonia 0.3.2 and OpenCV/OpenCvSharp 4.13.
 
 - NuGet restore and Release solution build succeeded. **Zero compiler warnings or errors.**
-- **43 automated tests passed:** 34 core cases and 9 Avalonia/Skia UI workflow cases.
+- **59 automated tests passed:** 48 core cases and 11 Avalonia/Skia UI workflow cases.
 - Core checks cover empty/corrupted/unsupported files; pre-decode size guards; JPEG, PNG, BMP, TIFF and WebP; small images; 16-bit and alpha handling; all eight JPEG EXIF orientations and known orientation pixel ordering; TIFF orientation; Unicode paths; local noise/frequency changes; flat-image safeguards; robust normalization; validity-weighted combination; rendering immutability; PNG dimensions/pixels; source overwrite protection; and cancellation.
 - A **4104 × 4104 (~16.8 MP)** JPEG was analyzed and exported at unchanged dimensions. Selecting 16px blocks correctly increased the effective block size to 32px to bound the analysis grid.
 - Headless UI tests use actual Insiyab styles, Skia bitmaps and the real window/view model. They exercise repeated JPEG/PNG replacement, all method selections, non-JPEG qualification, rapid visualization changes with cached raw scores, invalid-file recovery, PNG export, wheel zoom, pointer drag and resize/fit. They verify the light theme, one viewer, the subtitle inside the brand pill, the visible color guide, and momentary mouse/keyboard comparison without losing zoom or recalculating scores. A shutdown regression test closes during analysis, pending rendering and completed rendering, and verifies the viewer detaches and late pointer callbacks are safe.
@@ -27,6 +27,14 @@ The application now defaults to light mode, with a single image canvas and a mom
 The persistent color guide identifies purple as lower, teal as moderate and yellow as higher local differences. A hover marker applies the renderer's sensitivity curve to the inspected block score. The app name and description share one title-bar pill, with the description directly below the name. The core algorithms and export resolution are unchanged.
 
 The new publish is in `artifacts/win-x64-v1.1.0` so an already-running older version can keep its files open. The native Windows workflow verified all six maps and PNG export, then captured the original while Space was held and the overlay after release. Normal window closure returned exit code 0, stderr was empty and no crash log was produced. Captures and exports are under `artifacts/verification/light-ui`.
+
+## 1.3.0 descriptive analysis summary
+
+A concise Arabic/English summary now appears below the image after successful analysis. It distinguishes regions to review, no prominent differences and limited information. Up to three regions name the methods responding within them; selecting one switches to its strongest responding method and frames/zooms to the oriented bounds. The frame disappears during Show original and can be cleared. Single-method scope, JPEG-only exclusions, natural causes of differences and the limits of both positive and negative findings remain visible. Display settings do not recalculate the summary. No manipulation probability or authenticity verdict is generated.
+
+Fourteen new core cases verify grouping and method attribution, aggregate ranking before threshold-crossing counts, omission of Combined/unavailable checks, validity/nonfinite masking, limited coverage, fixed response threshold, raw-score immutability, cancellation/grid validation, partial edge blocks and all eight EXIF region orientations. Two new UI cases exercise actual procedural-image analysis, region-button navigation, original comparison, cached summary under display changes, Arabic translation, image replacement, low-detail inputs and independent-method scope. Cancel rollback also verifies summary identity is preserved. All 59 solution tests passed; the final build/test runs had no compiler warnings or errors.
+
+The published Windows executable passed native file selection, analysis, all six result selections, locked reanalysis/Cancel, display resets and PNG export at 1280 × 800 with an unchanged source SHA-256. The procedural fixture's central noise patch appears as the first review region; clicking it selected Noise, framed the patch and zoomed from fit to 205%. Arabic/dark switching preserved the selection, and Clear selection/Fit restored the overview. Captures are in `artifacts/verification/v1.3`. Normal closure returned exit code 0 and stderr was empty. These checks validate behavior and localization, not forensic accuracy on real photographs.
 
 ## 1.2.1 upload text clipping
 

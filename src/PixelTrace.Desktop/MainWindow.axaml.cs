@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent(); DataContext = _model;
         Viewer.ViewChanged += _ => ViewZoom.Text = Viewer.ZoomText;
+        SummaryPanel.RegionSelected += Viewer.FocusRegion;
         Viewer.PixelHovered += _model.InspectPixel;
         Viewer.PointerExited += (_, _) => _model.ClearInspection();
         CompareButton.AddHandler(PointerPressedEvent, ComparePressed, RoutingStrategies.Tunnel, handledEventsToo: true);

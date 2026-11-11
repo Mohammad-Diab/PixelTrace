@@ -4,7 +4,7 @@ An offline .NET 10 / Avalonia 12 desktop workbench for local image-forensics exp
 
 ## Run on Windows x64
 
-Open **`artifacts/win-x64-v1.2.1/PixelTrace.exe`**. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
+Open **`artifacts/win-x64-v1.3.0/PixelTrace.exe`**. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
 
 1. **Open image** (Ctrl+O) opens an Insiyab dialog. Pick/drop/paste an image using the library's FileUpload, choose the method and block/ELA settings, then **Analyze**. Cancel preserves the current image and results.
 2. The result appears over one image. **Show original**, beside the filename, shows the source while held; release to restore the overlay.
@@ -16,6 +16,10 @@ The language pill switches English/Arabic. English controls sit on the right; Ar
 
 The **Color guide** stays visible below the image: purple means lower local differences, teal moderate differences, and yellow higher differences. Hovering the image marks the inspected block on that scale using the current sensitivity. Masked regions remain unchanged; intensity is not an AI probability or a verdict on authenticity.
 
+The bilingual **Analysis summary** below the image explains whether there are regions to review, no prominent differences, or limited usable information. It lists up to three regions and the checks that responded within each one. Selecting a region frames and zooms to it and displays its strongest responding method. Show original hides the frame while held; Clear selection removes it. The summary also discloses single-method scope and unavailable JPEG checks. Lighting, focus and compression can produce differences; neither a response nor its absence certifies authenticity.
+
+The summary is computed once from the independent maps, excluding Combined and unavailable checks. Valid blocks with normalized response at least 0.65 are grouped by eight-neighbor connectivity. Groups are ranked by their peak validity-weighted combined response; ties use the number of checks responding in the same block, block count and individual peak response. These checks may be correlated. Region bounds follow the displayed EXIF orientation. Fewer than four usable blocks, under one-quarter usable pixel coverage, or a side below 64px produces the limited-information qualification. These are fixed navigation heuristics, not calibrated detection thresholds. Sensitivity, opacity and result selection do not change the report. PNG export remains the analysis overlay without the selection frame or summary text.
+
 ## Build and verify
 
 Requires the .NET 10 SDK. The first restore downloads dependencies; running the built application is entirely offline.
@@ -24,7 +28,7 @@ Requires the .NET 10 SDK. The first restore downloads dependencies; running the 
 dotnet restore PixelTrace.slnx
 dotnet build PixelTrace.slnx -c Release --no-restore
 dotnet test PixelTrace.slnx -c Release
-dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.2.1
+dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.3.0
 dotnet run --project src/PixelTrace.Desktop
 ```
 

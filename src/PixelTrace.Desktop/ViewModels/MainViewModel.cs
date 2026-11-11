@@ -13,7 +13,7 @@ namespace PixelTrace.Desktop.ViewModels;
 
 public sealed record MethodChoice(AnalysisMethod Kind, string Name) { public override string ToString() => Name; }
 
-public sealed class MainViewModel : ObservableObject
+public sealed partial class MainViewModel : ObservableObject
 {
     private ImageDocument? _image;
     private FileEntry? _sourceFile;
@@ -51,7 +51,7 @@ public sealed class MainViewModel : ObservableObject
     public bool IsShowingOriginal
     {
         get => _showOriginal;
-        set { if (Set(ref _showOriginal, value && CanCompare)) { Changed(nameof(DisplayImage)); Changed(nameof(HoverIntensity)); } }
+        set { if (Set(ref _showOriginal, value && CanCompare)) { Changed(nameof(DisplayImage)); Changed(nameof(HoverIntensity)); Changed(nameof(ReviewBounds)); } }
     }
     public double? HoverIntensity => IsShowingOriginal ? null : _hoverIntensity;
     public bool IsBusy { get => _busy; private set { if (Set(ref _busy, value)) NotifyState(); } }
@@ -103,6 +103,7 @@ public sealed class MainViewModel : ObservableObject
         var kind = _selected.Kind; Methods = MakeMethods(); _selected = Methods.First(m => m.Kind == kind);
         RefreshMethods();
         SyncSelectedResult();
+        RefreshSummary(false);
         foreach (var n in new[] { nameof(Text), nameof(IsArabic), nameof(Direction), nameof(Methods), nameof(AvailableMethods),
             nameof(SelectedMethod), nameof(Status), nameof(ErrorText), nameof(FileName), nameof(MethodTitle), nameof(MethodDescription) }) Changed(n);
         ClearInspection();
@@ -133,7 +134,7 @@ public sealed class MainViewModel : ObservableObject
     {
         BeginAnalysis(); var result = await Calculate(_image!, new(BlockSize, ElaQuality), AnalysisMethod.Combined, token);
         token.ThrowIfCancellationRequested(); _analysis = result; _appliedMethod = AnalysisMethod.Combined;
-        NotifyResult(); SetStatus("Done"); QueueRender();
+        RefreshSummary(); NotifyResult(); SetStatus("Done"); QueueRender();
     }
 
     public Task ExecuteDraftAsync(AnalysisDraft draft)
@@ -155,7 +156,7 @@ public sealed class MainViewModel : ObservableObject
                 {
                     CommitImage(next, bitmap!, draft.File!, result, draft.Method.Kind); next = null; bitmap = null;
                 }
-                else { _analysis = result; _appliedMethod = draft.Method.Kind; _selected = Methods.First(m => m.Kind == draft.Method.Kind); NotifyResult(); }
+                else { _analysis = result; _appliedMethod = draft.Method.Kind; _selected = Methods.First(m => m.Kind == draft.Method.Kind); RefreshSummary(); NotifyResult(); }
                 BlockSize = draft.BlockSize; ElaQuality = draft.ElaQuality;
                 SetStatus("Done"); QueueRender();
             }
@@ -180,7 +181,7 @@ public sealed class MainViewModel : ObservableObject
         _image = image; _original = bitmap; _result = null; _sourceFile = file; _analysis = result; _appliedMethod = method;
         _selected = Methods.First(m => m.Kind == method); IsShowingOriginal = false; ClearInspection();
         foreach (var n in new[] { nameof(Original), nameof(Result), nameof(DisplayImage), nameof(HasImage), nameof(FileName), nameof(FileDetails), nameof(SelectedMethod) }) Changed(n);
-        NotifyResult(); oldImage?.Dispose(); oldOriginal?.Dispose(); oldResult?.Dispose();
+        RefreshSummary(); NotifyResult(); oldImage?.Dispose(); oldOriginal?.Dispose(); oldResult?.Dispose();
     }
     private static async Task<ImageDocument> ReadEntry(FileEntry file, CancellationToken token)
     {

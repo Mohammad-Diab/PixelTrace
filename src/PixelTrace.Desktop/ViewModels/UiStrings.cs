@@ -41,7 +41,24 @@ public sealed class UiStrings(bool arabic)
         ["CompressionInfo"] = ("Compares JPEG blocks. Previous saves affect the result.", "يقارن بلوكات JPEG، ويتأثر بالحفظ السابق."),
         ["TextureInfo"] = ("Compares texture and edges. Natural boundaries may respond.", "يقارن النسيج والحواف، وقد يستجيب للحدود الطبيعية."),
         ["ElaInfo"] = ("JPEG recompression heuristic. Not proof of editing.", "فحص تقريبي بإعادة ضغط JPEG، وليس دليلاً على التعديل."),
-        ["Masked"] = ("insufficient evidence", "معلومات غير كافية"), ["Intensity"] = ("intensity", "شدة الاختلاف")
+        ["Masked"] = ("insufficient evidence", "معلومات غير كافية"), ["Intensity"] = ("intensity", "شدة الاختلاف"),
+        ["Summary"] = ("Analysis summary", "ملخّص الفحص"),
+        ["SummaryFound"] = ("Regions to review", "مناطق تستحق المراجعة"),
+        ["SummaryQuiet"] = ("No prominent differences", "لم تظهر فروق بارزة"),
+        ["SummaryLimited"] = ("Limited information", "معلومات محدودة"),
+        ["SummaryFoundInfo"] = ("Showing {0} of {1} regions. Select one to inspect.", "أبرز {0} من {1} منطقة. اضغط لتحديد مكانها."),
+        ["SummaryQuietInfo"] = ("These checks found no strong local differences.", "لم ترصد هذه الفحوص فروقاً محلية قوية."),
+        ["SummaryLimitedInfo"] = ("Too little usable detail. Any listed regions are only review cues.", "التفاصيل القابلة للفحص قليلة. المناطق المعروضة مؤشرات للمراجعة فقط."),
+        ["SummaryScope"] = ("Checks run: {0}", "الفحوص المنفّذة: {0}"),
+        ["SummarySingle"] = ("One check only; use All signals to compare", "فحص واحد فقط؛ استخدم جميع الفحوص للمقارنة"),
+        ["SummaryJpeg"] = ("JPEG checks unavailable", "فحوص JPEG غير متاحة"),
+        ["SummaryCauses"] = ("Lighting, focus and compression can also cause differences.", "الإضاءة والتركيز والضغط قد تسبب فروقاً أيضاً."),
+        ["SummaryLimit"] = ("Differences do not prove editing. Their absence does not prove authenticity.", "الفروق لا تثبت التعديل، وغيابها لا يثبت الأصالة."),
+        ["ClearRegion"] = ("Clear selection", "إلغاء التحديد"),
+        ["RegionAcross"] = ("Across the image", "منطقة واسعة"),
+        ["Region00"] = ("Upper left", "أعلى اليسار"), ["Region01"] = ("Upper middle", "أعلى الوسط"), ["Region02"] = ("Upper right", "أعلى اليمين"),
+        ["Region10"] = ("Middle left", "وسط اليسار"), ["Region11"] = ("Center", "الوسط"), ["Region12"] = ("Middle right", "وسط اليمين"),
+        ["Region20"] = ("Lower left", "أسفل اليسار"), ["Region21"] = ("Lower middle", "أسفل الوسط"), ["Region22"] = ("Lower right", "أسفل اليمين")
     };
     public string this[string key] => Words.TryGetValue(key, out var value) ? arabic ? value.Ar : value.En : key;
 }

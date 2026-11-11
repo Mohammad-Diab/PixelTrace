@@ -36,7 +36,7 @@
 
     <Grid Grid.Row="2" x:Name="Workspace" ColumnDefinitions="*,16,240" Margin="20,0,20,12">
       <Border x:Name="ImagePanel" Classes="panel low" ClipToBounds="True">
-        <Grid RowDefinitions="Auto,*,Auto">
+        <Grid RowDefinitions="Auto,*,Auto,Auto">
           <Border Classes="panel-head" Padding="14,10" IsVisible="{Binding HasImage}">
             <StackPanel Spacing="4">
               <StackPanel Orientation="Horizontal" Spacing="12">
@@ -48,7 +48,7 @@
           </Border>
           <Border Grid.Row="1" Background="{DynamicResource InsWash1}">
             <Grid>
-              <local:ImageViewport x:Name="Viewer" Source="{Binding DisplayImage}" FlowDirection="LeftToRight" AutomationProperties.Name="Image inspection canvas" />
+              <local:ImageViewport x:Name="Viewer" Source="{Binding DisplayImage}" ReviewBounds="{Binding ReviewBounds}" FlowDirection="LeftToRight" AutomationProperties.Name="Image inspection canvas" />
               <StackPanel IsVisible="{Binding !HasImage}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" IsHitTestVisible="False">
                 <ins:Icon Data="{StaticResource IconFolder}" Size="30" Foreground="{DynamicResource InsToneBrandSoft}" HorizontalAlignment="Center" />
                 <TextBlock Text="{Binding Text[Empty]}" FontSize="16" HorizontalAlignment="Center" />
@@ -57,7 +57,8 @@
               <ins:LoadingSpinner Classes="sm" IsVisible="{Binding IsRendering}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="14" />
             </Grid>
           </Border>
-          <Border Grid.Row="2" Classes="panel-foot" Padding="14,10">
+          <local:AnalysisSummaryView x:Name="SummaryPanel" Grid.Row="2" IsVisible="{Binding HasResults}" />
+          <Border Grid.Row="3" Classes="panel-foot" Padding="14,10">
             <StackPanel Spacing="3">
               <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Text[Legend]}" FontWeight="SemiBold" FontSize="11" /><TextBlock Grid.Column="1" Text="{Binding Text[LegendNote]}" Classes="muted" FontSize="10" /></Grid>
               <StackPanel FlowDirection="LeftToRight">

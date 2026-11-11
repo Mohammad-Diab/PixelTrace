@@ -165,7 +165,7 @@ public sealed class WorkflowTests : IDisposable
         {
             string source = Fixture(".jpg", 513, 385);
             await model.OpenAsync(source); await model.AnalyzeAsync(); await Rendered(model);
-            var original = model.Original; var scores = model.CurrentMap!.RawScores; var result = model.Result;
+            var original = model.Original; var scores = model.CurrentMap!.RawScores; var result = model.Result; var summary = model.Summary;
             var opening = window.ShowAnalysisSetupAsync(window.FindControl<Control>("OpenButton")!, false); Frame();
             var dialog = window.ActiveAnalysisDialog!; var draft = (AnalysisDraft)dialog.DataContext!;
             string replacement = Fixture(".png", 321, 241);
@@ -174,6 +174,7 @@ public sealed class WorkflowTests : IDisposable
             Assert.True(draft.CanSubmit); draft.BlockSize = 64;
             dialog.Close(false); await opening; Frame();
             Assert.Same(original, model.Original); Assert.Same(result, model.Result); Assert.Same(scores, model.CurrentMap.RawScores); Assert.Equal(32, model.BlockSize);
+            Assert.Same(summary, model.Summary);
 
             var reanalyzing = window.ShowAnalysisSetupAsync(window.FindControl<Control>("ReanalyzeButton")!, true); Frame();
             dialog = window.ActiveAnalysisDialog!; draft = (AnalysisDraft)dialog.DataContext!;
@@ -289,6 +290,79 @@ public sealed class WorkflowTests : IDisposable
             Assert.False(model.IsShowingOriginal); Assert.False(model.CanCompare); Assert.Same(model.Original, viewer.Source); Assert.Null(legend.Score);
         }
         finally { await Close(window); }
+    }
+
+    [AvaloniaFact]
+    public async Task SummaryLocalizesAndNavigatesWithoutChangingWithDisplaySettings()
+    {
+        var window = new MainWindow(); window.Show(); var model = (MainViewModel)window.DataContext!;
+        try
+        {
+            Assert.False(window.FindControl<AnalysisSummaryView>("SummaryPanel")!.IsVisible);
+            string path = SummaryFixture();
+            await model.OpenAsync(path); await model.AnalyzeAsync(); await Rendered(model); Frame();
+            var summary = model.Summary!;
+            Assert.NotNull(summary); Assert.False(summary.LimitedCoverage); Assert.True(summary.RegionCount > 0);
+            Assert.Equal(5, summary.Methods.Count); Assert.DoesNotContain(AnalysisMethod.Combined, summary.Methods);
+            Assert.True(window.FindControl<AnalysisSummaryView>("SummaryPanel")!.IsVisible);
+            Assert.Contains("Regions to review", model.SummaryStatus);
+            var button = window.GetVisualDescendants().OfType<Button>().First(b => b.Tag is SummaryRegionItem);
+            var item = (SummaryRegionItem)button.Tag!;
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Rendered(model); Frame();
+            var viewer = window.FindControl<ImageViewport>("Viewer")!;
+            Assert.Equal(item.Region.PreferredMethod, model.SelectedMethod.Kind);
+            Assert.Equal(new Avalonia.Rect(item.Region.X, item.Region.Y, item.Region.Width, item.Region.Height), viewer.ReviewBounds);
+            Assert.False(viewer.State.Fitted);
+            var state = viewer.State; var bounds = viewer.ReviewBounds; var raw = model.CurrentMap!.RawScores;
+            model.IsShowingOriginal = true; Frame(); Assert.Null(viewer.ReviewBounds); Assert.Equal(state, viewer.State);
+            model.IsShowingOriginal = false; Frame(); Assert.Equal(bounds, viewer.ReviewBounds); Assert.Equal(state, viewer.State);
+            model.Opacity = .2; model.Sensitivity = 2.3; await Rendered(model); Frame();
+            Assert.Same(summary, model.Summary); Assert.Same(raw, model.CurrentMap.RawScores);
+            model.ToggleLanguage(); Frame();
+            Assert.Equal("مناطق تستحق المراجعة", model.SummaryStatus);
+            Assert.Contains(model.Text["SummaryLimit"], window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text));
+            Assert.Equal(bounds, viewer.ReviewBounds); Assert.Equal(state, viewer.State);
+            Assert.Equal(FlowDirection.LeftToRight, viewer.FlowDirection);
+            model.ClearReviewRegion(); Frame(); Assert.Null(viewer.ReviewBounds);
+            await model.OpenAsync(Fixture(".png", 200, 160)); Frame();
+            Assert.Null(model.Summary); Assert.Empty(model.SummaryRegions);
+            Assert.False(window.FindControl<AnalysisSummaryView>("SummaryPanel")!.IsVisible);
+        }
+        finally { if (model.IsArabic) model.ToggleLanguage(); await Close(window); }
+    }
+
+    [AvaloniaFact]
+    public async Task SummaryExplainsLimitedDataAndSingleMethodScope()
+    {
+        var window = new MainWindow(); window.Show(); var model = (MainViewModel)window.DataContext!;
+        try
+        {
+            using var image = new Mat(128, 128, MatType.CV_8UC3, new Scalar(128, 128, 128));
+            string path = Path.Combine(_folder, "flat.png"); Cv2.ImWrite(path, image);
+            await model.OpenAsync(path); await model.AnalyzeAsync(); await Rendered(model); Frame();
+            Assert.True(model.Summary!.LimitedCoverage); Assert.Empty(model.SummaryRegions);
+            Assert.Equal("Limited information", model.SummaryStatus); Assert.Contains("JPEG checks unavailable", model.SummaryScope);
+            var draft = model.CreateDraft(true); draft.Method = draft.Methods.Single(m => m.Kind == AnalysisMethod.Noise);
+            await model.ExecuteDraftAsync(draft); await Rendered(model); Frame();
+            Assert.Single(model.Summary!.Methods); Assert.Contains("One check only", model.SummaryScope);
+            Assert.DoesNotContain("JPEG checks unavailable", model.SummaryScope);
+        }
+        finally { await Close(window); }
+    }
+
+    private string SummaryFixture()
+    {
+        using var image = new Mat(480, 640, MatType.CV_8UC3); var random = new Random(76);
+        for (int y = 0; y < 480; y++) for (int x = 0; x < 640; x++)
+        {
+            double wave = 15 * Math.Sin(x * .035) + 10 * Math.Cos(y * .043);
+            double noise = Math.Sqrt(-2 * Math.Log(Math.Max(1e-10, random.NextDouble()))) * Math.Cos(2 * Math.PI * random.NextDouble())
+                * (x is >= 256 and < 352 && y is >= 160 and < 288 ? 9 : 2);
+            byte Channel(double basis) => (byte)Math.Clamp(basis + wave + noise, 0, 255);
+            image.Set(y, x, new Vec3b(Channel(100 + y * .025), Channel(122 + x * .025), Channel(150 + x * .02)));
+        }
+        string path = Path.Combine(_folder, "summary.jpg");
+        Cv2.ImWrite(path, image, new ImageEncodingParam(ImwriteFlags.JpegQuality, 94)); return path;
     }
 
     private string Fixture(string extension, int width, int height)
