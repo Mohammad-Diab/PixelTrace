@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PixelTrace.Core/PixelTrace.Core.csproj" />
+    <Project Path="src/PixelTrace.Desktop/PixelTrace.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PixelTrace.Tests/PixelTrace.Tests.csproj" />
+    <Project Path="tests/PixelTrace.Desktop.Tests/PixelTrace.Desktop.Tests.csproj" />
+  </Folder>
+</Solution>

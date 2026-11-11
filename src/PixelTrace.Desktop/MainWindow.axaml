@@ -1,0 +1,165 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ins="using:Insiyab.Avalonia.Controls"
+        xmlns:vm="using:PixelTrace.Desktop.ViewModels"
+        xmlns:local="using:PixelTrace.Desktop.Controls"
+        x:Class="PixelTrace.Desktop.MainWindow" x:DataType="vm:MainViewModel"
+        Title="PixelTrace — Digital image forensics" Width="1500" Height="940" MinWidth="1100" MinHeight="730"
+        Icon="/Assets/pixeltrace.ico"
+        WindowStartupLocation="CenterScreen" ins:TitleBar.Extends="True">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Border Classes="topbar" ins:TitleBar.IsDragArea="True">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Border Classes="island brand" IsVisible="True" ins:TitleBar.IsSystemMenuArea="True">
+          <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <ins:Icon Data="{StaticResource IconSearch}" Size="23" Foreground="{DynamicResource InsPrimaryMid}" />
+            <TextBlock Text="PixelTrace" FontWeight="Bold" FontSize="19" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+        <TextBlock Grid.Column="1" Text="DIGITAL IMAGE FORENSICS" Classes="eyebrow muted" Margin="20,0" VerticalAlignment="Center" />
+        <ins:CaptionButtons Grid.Column="2" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="20,10,20,16">
+      <ins:Toolbar Classes="plain">
+        <ins:ToolbarButton Label="Open Image" Icon="{StaticResource IconFolder}" ShowLabel="True" HotKey="Ctrl+O" Click="OpenClick" IsEnabled="{Binding CanOpen}" />
+        <Button Classes="primary" Click="AnalyzeClick" HotKey="F5" IsEnabled="{Binding CanAnalyze}" ins:Busy.IsBusy="{Binding IsBusy}" AutomationProperties.Name="Analyze">
+          <StackPanel Orientation="Horizontal" Spacing="8"><ins:Icon Data="{StaticResource IconSearch}" Size="17" /><TextBlock Text="Analyze" /></StackPanel>
+        </Button>
+        <ins:ToolbarButton Label="Save Result" Icon="{StaticResource IconDownload}" ShowLabel="True" HotKey="Ctrl+S" Click="SaveClick" IsEnabled="{Binding CanSave}" />
+        <Separator />
+        <ins:ToolbarButton Label="Reset View" ShowLabel="True" Click="FitClick" IsEnabled="{Binding HasImage}" />
+        <Button Classes="ghost-danger sm" Content="Cancel" Click="CancelClick" IsVisible="{Binding IsBusy}" />
+      </ins:Toolbar>
+      <StackPanel Grid.Column="1" Spacing="3" Margin="24,0,0,0" VerticalAlignment="Center" MaxWidth="380">
+        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" />
+        <TextBlock Text="{Binding FileDetails}" Classes="muted num" FontSize="12" HorizontalAlignment="Right" />
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="2" ColumnDefinitions="278,16,*" Margin="20,0,20,16">
+      <Border Classes="panel low">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="18" Spacing="19">
+            <StackPanel Spacing="5">
+              <TextBlock Text="Investigation" Classes="h3" />
+              <TextBlock Text="Look for local inconsistencies. Compare the evidence in context." Classes="muted" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Classes="field">
+              <TextBlock Text="Analysis method" Classes="label" />
+              <ComboBox ItemsSource="{Binding Methods}" SelectedItem="{Binding SelectedMethod}" HorizontalAlignment="Stretch" AutomationProperties.Name="Analysis method" />
+            </StackPanel>
+            <StackPanel Classes="field">
+              <TextBlock Text="Block size" Classes="label" />
+              <ComboBox ItemsSource="{Binding BlockSizes}" SelectedItem="{Binding BlockSize}" IsEnabled="{Binding CanOpen}" HorizontalAlignment="Stretch" AutomationProperties.Name="Block size in pixels" />
+              <TextBlock Text="Pixels per block · applies on Analyze" Classes="hint" FontSize="11" />
+            </StackPanel>
+            <Separator />
+            <StackPanel Spacing="14" IsEnabled="{Binding CanAdjust}">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Sensitivity" Classes="label" /><TextBlock Grid.Column="1" Text="{Binding Sensitivity, StringFormat={}{0:0.00}×}" Classes="num muted" FontSize="12" /></Grid>
+                <Slider Minimum="0.4" Maximum="2.5" Value="{Binding Sensitivity}" SmallChange="0.05" AutomationProperties.Name="Heatmap sensitivity" />
+              </StackPanel>
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Heatmap opacity" Classes="label" /><TextBlock Grid.Column="1" Text="{Binding Opacity, StringFormat={}{0:0%}}" Classes="num muted" FontSize="12" /></Grid>
+                <Slider Minimum="0" Maximum="1" Value="{Binding Opacity}" SmallChange="0.05" AutomationProperties.Name="Heatmap opacity" />
+              </StackPanel>
+            </StackPanel>
+            <StackPanel Spacing="8">
+              <TextBlock Text="ANOMALY INTENSITY" Classes="eyebrow muted" FontSize="10" />
+              <Border Height="10" CornerRadius="5">
+                <Border.Background><LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%"><GradientStop Color="#440154" Offset="0" /><GradientStop Color="#3B528B" Offset="0.25" /><GradientStop Color="#21918C" Offset="0.5" /><GradientStop Color="#5EC962" Offset="0.75" /><GradientStop Color="#FDE725" Offset="1" /></LinearGradientBrush></Border.Background>
+              </Border>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Lower" Classes="muted" FontSize="11" /><TextBlock Grid.Column="1" Text="Higher" Classes="muted" FontSize="11" /></Grid>
+              <TextBlock Text="Relative intensity, not probability. Masked regions retain the original." Classes="hint" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+            <Expander Header="Analysis settings" HorizontalAlignment="Stretch">
+              <StackPanel Spacing="13" Margin="0,10,0,0">
+                <StackPanel Classes="field">
+                  <TextBlock Text="ELA JPEG quality" Classes="label" />
+                  <ComboBox ItemsSource="{Binding ElaQualities}" SelectedItem="{Binding ElaQuality}" HorizontalAlignment="Stretch" IsEnabled="{Binding CanOpen}" AutomationProperties.Name="ELA recompression quality" />
+                  <TextBlock Text="Applies on Analyze. JPEG input only." Classes="hint" FontSize="11" TextWrapping="Wrap" />
+                </StackPanel>
+                <TextBlock Text="Combined map weights" Classes="label" />
+                <ItemsControl ItemsSource="{Binding Weights}" IsEnabled="{Binding CanAdjust}">
+                  <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:MethodWeight">
+                    <StackPanel Spacing="4" Margin="0,0,0,12">
+                      <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Name}" FontSize="12" /><TextBlock Grid.Column="1" Text="{Binding Value, StringFormat={}{0:0.00}}" Classes="num muted" FontSize="11" /></Grid>
+                      <Slider Value="{Binding Value}" Minimum="0" Maximum="2" SmallChange="0.05" AutomationProperties.Name="{Binding Name}" />
+                    </StackPanel>
+                  </DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Expander>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Grid Grid.Column="2" RowDefinitions="*,Auto,Auto" RowSpacing="14">
+        <Grid ColumnDefinitions="*,12,*">
+          <Border Classes="panel low" ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*,Auto">
+              <Border Classes="panel-head"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="01 / ORIGINAL" Classes="eyebrow muted" FontSize="10" /><TextBlock Text="Source image" FontWeight="SemiBold" Margin="0,4,0,0" /></StackPanel><TextBlock x:Name="SourceZoom" Grid.Column="1" Text="—" Classes="num muted" VerticalAlignment="Center" FontSize="12" /></Grid></Border>
+              <Border Grid.Row="1" Background="{DynamicResource InsMediaStage}">
+                <Grid>
+                  <local:ImageViewport x:Name="OriginalViewer" Source="{Binding Original}" />
+                  <StackPanel IsVisible="{Binding !HasImage}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14" Margin="20">
+                    <ins:Icon Data="{StaticResource IconFolder}" Size="36" Foreground="{DynamicResource InsToneBrandSoft}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Start with an image" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Everything stays on this device." Classes="muted" FontSize="12" HorizontalAlignment="Center" />
+                    <Button Content="Open Image" Classes="secondary" Click="OpenClick" HorizontalAlignment="Center" IsEnabled="{Binding CanOpen}" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+              <Border Grid.Row="2" Classes="panel-foot"><TextBlock Text="{Binding SourceNote}" Classes="muted" FontSize="11" TextWrapping="Wrap" /></Border>
+            </Grid>
+          </Border>
+          <Border Grid.Column="2" Classes="panel low" ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*,Auto">
+              <Border Classes="panel-head"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="02 / ANALYSIS" Classes="eyebrow muted" FontSize="10" /><TextBlock Text="{Binding MethodTitle}" FontWeight="SemiBold" Margin="0,4,0,0" /></StackPanel><ins:LoadingSpinner Grid.Column="1" Classes="sm" IsVisible="{Binding IsRendering}" VerticalAlignment="Center" /></Grid></Border>
+              <Border Grid.Row="1" Background="{DynamicResource InsMediaStage}">
+                <Grid>
+                  <local:ImageViewport x:Name="ResultViewer" Source="{Binding Result}" />
+                  <StackPanel IsVisible="{Binding !HasImage}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="24">
+                    <ins:Icon Data="{StaticResource IconSearch}" Size="36" Foreground="{DynamicResource InsToneBrandSoft}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Follow the evidence" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Five signals. One closer look." Classes="muted" FontSize="12" HorizontalAlignment="Center" />
+                  </StackPanel>
+                  <Border Classes="media-note" IsVisible="{Binding MethodUnavailable}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20" Padding="16"><TextBlock Text="This method requires a JPEG source." TextWrapping="Wrap" /></Border>
+                </Grid>
+              </Border>
+              <Border Grid.Row="2" Classes="panel-foot"><TextBlock Text="{Binding Coverage}" Classes="muted" FontSize="11" /></Border>
+            </Grid>
+          </Border>
+        </Grid>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+          <TextBlock Text="{Binding PixelReadout}" Classes="muted num" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+            <Button Classes="ghost icon sm" Click="ZoomOutClick" IsEnabled="{Binding HasImage}" ToolTip.Tip="Zoom out" AutomationProperties.Name="Zoom out"><ins:Icon Data="{StaticResource InsPictureZoomOut}" Size="17" /></Button>
+            <Button Classes="ghost icon sm" Click="ZoomInClick" IsEnabled="{Binding HasImage}" ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in"><ins:Icon Data="{StaticResource InsPictureZoomIn}" Size="17" /></Button>
+            <Button Classes="secondary sm" Content="Fit" Click="FitClick" IsEnabled="{Binding HasImage}" />
+            <Button Classes="secondary sm" Content="1:1" Click="ActualClick" IsEnabled="{Binding HasImage}" ToolTip.Tip="One image pixel per screen pixel" />
+          </StackPanel>
+        </Grid>
+        <Border Grid.Row="2" Classes="card" Padding="16,13">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Reading this map" FontWeight="SemiBold" FontSize="13" /><TextBlock Grid.Column="1" Text="{Binding AnalysisDetails}" Classes="muted num" FontSize="11" /></Grid>
+            <TextBlock Text="{Binding MethodDescription}" TextWrapping="Wrap" FontSize="12" />
+            <TextBlock Text="{Binding AnalysisNote}" Classes="muted" TextWrapping="Wrap" FontSize="11" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <StackPanel Grid.Row="3">
+      <Border Classes="card" IsVisible="{Binding HasError}" Margin="20,0,20,10" Padding="12">
+        <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="{DynamicResource InsToneBad}" FontSize="12" /><Button Grid.Column="1" Classes="close sm" Click="DismissErrorClick" ToolTip.Tip="Dismiss error" /></Grid>
+      </Border>
+      <ProgressBar IsVisible="{Binding IsBusy}" Value="{Binding Progress}" Height="3" Classes="sm" AutomationProperties.Name="Analysis progress" />
+      <Border BorderBrush="{DynamicResource InsRim}" BorderThickness="0,1,0,0" Padding="22,10">
+        <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Status}" FontSize="12" TextTrimming="CharacterEllipsis" /><TextBlock Grid.Column="1" Text="OFFLINE  ·  PROOF OF CONCEPT" Classes="muted eyebrow" FontSize="10" Margin="16,0,0,0" VerticalAlignment="Center" /></Grid>
+      </Border>
+    </StackPanel>
+  </Grid>
+</Window>

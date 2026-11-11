@@ -1,0 +1,4 @@
+<Project>
+  <!-- Offline builds: suppress the Avalonia package's optional build telemetry target. -->
+  <PropertyGroup><UsedAvaloniaProducts></UsedAvaloniaProducts></PropertyGroup>
+</Project>
