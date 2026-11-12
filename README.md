@@ -65,6 +65,10 @@ Each method compares nearby regions with compatible texture and luminance, suppl
 - Files above 256 MB, images above 40 megapixels, or a side above 32,000px are rejected before native decoding. A large image still needs several hundred MB of memory for full-resolution originals, results and native intermediates.
 - Expensive work runs off the UI thread; independent tile rows run in bounded parallel loops. Cancellation is checked between regions/stages. A native JPEG/PNG codec call must finish before cancellation can take effect. Export writes a temporary file and replaces the destination only after successful completion.
 
+## License
+
+PixelTrace is licensed under the [MIT License](LICENSE), copyright (c) 2026 Mohammad Diab. Third-party components retain their own licenses; see [Third-party notices](THIRD-PARTY-NOTICES.md).
+
 ## Source layout
 
 `src/PixelTrace.Core` owns loading, independent signal calculations, normalization, combination and export. `src/PixelTrace.Desktop` contains view models, the Insiyab window, the inline image canvas and its color legend. `tests/PixelTrace.Tests` contains focused engine tests; `tests/PixelTrace.Desktop.Tests` covers UI lifetimes, rendering, momentary comparison and navigation. Windows is the tested runtime target. Core and UI use portable APIs; a Linux/macOS build needs the corresponding OpenCvSharp native runtime package and platform validation.
