@@ -6,14 +6,11 @@ An offline .NET 10 / Avalonia 12 desktop workbench for local image-forensics exp
 
 Download the portable Windows build from [PixelTrace v1.0.0](https://github.com/Mohammad-Diab/PixelTrace/releases/tag/v1.0.0), extract it completely, and run `PixelTrace.exe`. Keep the extracted files together. The .NET 10 runtime code is built into the executable through Native AOT; no .NET installation is required.
 
-| Download | Extracted size | Download size |
-| --- | ---: | ---: |
-| [Windows x64 ZIP](https://github.com/Mohammad-Diab/PixelTrace/releases/download/v1.0.0/PixelTrace-win-x64-v1.0.0.zip) | about 46 MiB | about 19 MiB |
-| [Windows x64 7z](https://github.com/Mohammad-Diab/PixelTrace/releases/download/v1.0.0/PixelTrace-win-x64-v1.0.0.7z) | about 46 MiB | about 13 MiB |
+[Download Windows x64 portable (7z)](https://github.com/Mohammad-Diab/PixelTrace/releases/download/v1.0.0/PixelTrace-win-x64-v1.0.0.7z).
 
-Both archives contain the same standalone application: .NET 10, Avalonia 12.1.3, Insiyab.Avalonia 0.3.2 and OpenCvSharp 4.13.0.20260627. OpenCV 4.13.0 is built from pinned upstream sources with only `core`, `imgproc` and `imgcodecs`. JPEG, PNG, BMP, TIFF and WebP are supported. Video/ML modules, FFmpeg, PDBs, unused CPU-dispatch variants and IPP/OpenCL acceleration are not shipped. The image-only native library uses a static C runtime and has no Media Foundation dependency. Disabling optional acceleration prioritizes package size; performance can vary by image and hardware.
+The standalone application uses .NET 10, Avalonia 12.1.3, Insiyab.Avalonia 0.3.2 and OpenCvSharp 4.13.0.20260627. OpenCV 4.13.0 is built from pinned upstream sources with only `core`, `imgproc` and `imgcodecs`. JPEG, PNG, BMP, TIFF and WebP are supported. Video/ML modules, FFmpeg, PDBs, unused CPU-dispatch variants and IPP/OpenCL acceleration are not shipped. The image-only native library uses a static C runtime and has no Media Foundation dependency. Disabling optional acceleration prioritizes package size; performance can vary by image and hardware.
 
-For local builds, the executable is `artifacts/win-x64-v1.0.0/PixelTrace.exe`. The release assets include SHA-256 checksums. ZIP and 7z refer to archive formats, not different application variants.
+For local builds, the executable is `artifacts/win-x64-v1.0.0/PixelTrace.exe`. The release assets include a SHA-256 checksum.
 
 1. **Open image** (Ctrl+O) opens an Insiyab dialog. Pick/drop/paste an image using the library's FileUpload, choose the method and block/ELA settings, then **Analyze**. Cancel preserves the current image and results.
 2. The result appears over one image. **Show original**, beside the filename, shows the source while held; release to restore the overlay.
@@ -46,7 +43,7 @@ Build the compact distribution with Visual Studio C++ build tools and CMake inst
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/Publish-Windows.ps1
 ```
 
-The script verifies the upstream source archive hashes, builds the image-only OpenCV runtime, tests against that exact DLL and publishes to an empty directory using the `WindowsNative` profile. It produces a ZIP and SHA-256 file; when 7-Zip is installed, it uses maximum standard Deflate for ZIP and also produces a smaller 7z archive with its checksum. Native build intermediates are cached under the system temporary directory. Use `-SkipNativeBuild` to reuse the verified native output. `-SkipTests` is available for packaging an already-tested commit. `-OutputDirectory` selects a fresh destination. A framework-dependent profile remains available for development, but the published release is the standalone Native AOT build.
+The script requires 7-Zip. It verifies the upstream source archive hashes, builds the image-only OpenCV runtime, tests against that exact DLL and publishes to an empty directory using the `WindowsNative` profile. It produces one 7z archive and its SHA-256 checksum. Native build intermediates are cached under the system temporary directory. Use `-SkipNativeBuild` to reuse the verified native output. `-SkipTests` is available for packaging an already-tested commit. `-OutputDirectory` selects a fresh destination. A framework-dependent profile remains available for development, but the published release is the standalone Native AOT build.
 
 Release notes, documentation and code comments are written in English. Arabic text is retained for the application's localization and the tests that exercise it or Unicode filenames.
 

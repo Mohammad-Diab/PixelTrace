@@ -10,6 +10,9 @@ Push-Location $projectRoot
 try {
     [xml]$project = Get-Content -LiteralPath 'src/PixelTrace.Desktop/PixelTrace.Desktop.csproj'
     $version = $project.Project.PropertyGroup.Version
+    $sevenZipCommand = Get-Command 7z -ErrorAction SilentlyContinue | Select-Object -First 1
+    $sevenZip = if ($sevenZipCommand) { $sevenZipCommand.Source } else { Join-Path $env:ProgramFiles '7-Zip/7z.exe' }
+    if (!(Test-Path -LiteralPath $sevenZip)) { throw 'Install 7-Zip to create the release archive.' }
     $suffix = if ($Mode -eq 'FrameworkDependent') { '-framework-dependent' } else { '' }
     if (!$OutputDirectory) { $OutputDirectory = "artifacts/win-x64-v$version$suffix" }
     $output = [IO.Path]::GetFullPath((Join-Path $projectRoot $OutputDirectory))
@@ -38,7 +41,7 @@ try {
     if ($Mode -eq 'Portable' -and (Test-Path -LiteralPath (Join-Path $output 'coreclr.dll'))) { throw 'The portable package must use Native AOT.' }
     Copy-Item -LiteralPath 'README.md','RELEASE_NOTES.md','VERIFICATION.md','THIRD-PARTY-NOTICES.md' -Destination $output
     if ($Mode -eq 'Portable') {
-        $startHere = "PixelTrace $version - Windows x64 portable`n`nRun PixelTrace.exe. The .NET 10 runtime code is included through Native AOT.`nNo .NET installation is required. Keep all extracted files together.`n`nZIP and 7z contain the same application. License notices are under licenses.`nAnalysis findings are review cues, not an authenticity verdict.`n"
+        $startHere = "PixelTrace $version - Windows x64 portable`n`nRun PixelTrace.exe. The .NET 10 runtime code is included through Native AOT.`nNo .NET installation is required. Keep all extracted files together.`n`nLicense notices are under licenses.`nAnalysis findings are review cues, not an authenticity verdict.`n"
         [IO.File]::WriteAllText((Join-Path $output 'START_HERE.txt'),$startHere,(New-Object Text.UTF8Encoding($false)))
     }
     $licenses = Join-Path $output 'licenses'
@@ -65,34 +68,17 @@ try {
     $nativeMetadata | Select-Object OpenCV,OpenCvSharpCommit,SourceArchives,Modules,Codecs,IPP,OpenCL,CpuDispatch,StaticCRT,SHA256,Bytes |
         ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'native-build.json') -Encoding UTF8
     $archiveBase = Join-Path $projectRoot "artifacts/PixelTrace-win-x64-v$version$suffix"
-    $zip = "$archiveBase.zip"
-    $sevenZipCommand = Get-Command 7z -ErrorAction SilentlyContinue | Select-Object -First 1
-    $sevenZip = if ($sevenZipCommand) { $sevenZipCommand.Source } else { Join-Path $env:ProgramFiles '7-Zip/7z.exe' }
-    $archives = @($zip)
-    if (Test-Path -LiteralPath $sevenZip) {
-        & $sevenZip a -tzip -mm=Deflate -mx=9 -mfb=258 -mpass=15 -mmt=2 -bsp0 -bso0 $zip $output
-        if ($LASTEXITCODE) { throw 'ZIP compression failed.' }
-        $sevenZipArchive = "$archiveBase.7z"
-        & $sevenZip a -t7z -mx=9 -m0=LZMA2 -md=64m -mmt=2 -bsp0 -bso0 $sevenZipArchive $output
-        if ($LASTEXITCODE) { throw '7z compression failed.' }
-        $archives += $sevenZipArchive
-        foreach ($archive in $archives) {
-            & $sevenZip t -bsp0 -bso0 $archive
-            if ($LASTEXITCODE) { throw "Archive verification failed: $archive" }
-        }
-    } else {
-        Compress-Archive -LiteralPath $output -DestinationPath $zip -CompressionLevel Optimal -Force
-    }
-    $checksums = foreach ($archive in $archives) {
-        $archiveHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-        $checksum = "$archiveHash  $([IO.Path]::GetFileName($archive))`n"
-        [IO.File]::WriteAllText("$archive.sha256",$checksum,(New-Object Text.UTF8Encoding($false)))
-        $checksum.TrimEnd()
-    }
-    [IO.File]::WriteAllText("$archiveBase-SHA256SUMS.txt",($checksums -join "`n")+"`n",(New-Object Text.UTF8Encoding($false)))
-    $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+    $archive = "$archiveBase.7z"
+    & $sevenZip a -t7z -mx=9 -m0=LZMA2 -md=64m -mmt=2 -bsp0 -bso0 $archive $output
+    if ($LASTEXITCODE) { throw '7z compression failed.' }
+    & $sevenZip t -bsp0 -bso0 $archive
+    if ($LASTEXITCODE) { throw 'Archive verification failed.' }
+    $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+    $checksum = "$hash  $([IO.Path]::GetFileName($archive))`n"
+    [IO.File]::WriteAllText("$archive.sha256",$checksum,(New-Object Text.UTF8Encoding($false)))
+    [IO.File]::WriteAllText("$archiveBase-SHA256SUMS.txt",$checksum,(New-Object Text.UTF8Encoding($false)))
     $files = Get-ChildItem -LiteralPath $output -Recurse -File
-    [pscustomobject]@{ Mode=$Mode; Folder=$output; Files=$files.Count; Bytes=($files | Measure-Object Length -Sum).Sum; ZipBytes=(Get-Item -LiteralPath $zip).Length; SHA256=$hash } |
-        ConvertTo-Json | Set-Content -LiteralPath "$zip.size.json" -Encoding UTF8
-    Write-Output "Windows x64 packages ready: $($archives -join ', ')"
+    [pscustomobject]@{ Mode=$Mode; Folder=$output; Files=$files.Count; Bytes=($files | Measure-Object Length -Sum).Sum; ArchiveBytes=(Get-Item -LiteralPath $archive).Length; SHA256=$hash } |
+        ConvertTo-Json | Set-Content -LiteralPath "$archive.size.json" -Encoding UTF8
+    Write-Output "Windows x64 package ready: $archive"
 } finally { Pop-Location }
