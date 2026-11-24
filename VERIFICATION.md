@@ -1,4 +1,26 @@
-# Build verification — 11 November 2026
+# Build verification — 24 November 2026
+
+## 1.3.1 compact Windows packages
+
+The stack remains .NET 10, Avalonia 12.1.3, Insiyab.Avalonia 0.3.2, OpenCvSharp 4.13.0.20260627 and OpenCV 4.13.0. Builds were performed with .NET SDK 11.0.100 targeting .NET 10 and the 10.0.15 Native AOT compiler, using Visual Studio 2026 C++ tools.
+
+| Distribution | Extracted size | ZIP size | .NET installation |
+| --- | ---: | ---: | --- |
+| Previous 1.3.0 self-contained ReadyToRun | 321.36 MiB | 117.18 MiB | Not required |
+| Compact Native AOT portable | about 51 MiB | about 20 MiB | Not required |
+| Compact framework-dependent | about 38 MiB | about 15 MiB | .NET 10 x64 Runtime required |
+
+The Git-tracked source was 217 KiB before this change. The old publish included 100 MiB of native vendor PDBs and 93 MiB of OpenCV/FFmpeg binaries. Compact publish profiles exclude PDB assets, including native NuGet symbols that the SDK symbol flag alone did not remove. The Native AOT profile also avoids shipping a separate CoreCLR and ReadyToRun assemblies.
+
+The image-only OpenCvSharpExtern is 5.54 MiB. It was compiled from the hash-verified OpenCV 4.13.0 source archive and OpenCvSharp commit `b161e7e012f5101f6d5dc68a835c59db6cc88b18`, enabling only core/imgproc/imgcodecs and JPEG/PNG/TIFF/WebP/BMP support. IPP, OpenCL, extra CPU-dispatch variants, video and ML modules are disabled. This prioritizes distribution size over optional acceleration. The exact build is recorded in `native-build.json`; the tested DLL SHA-256 is `F29C0DDF9F7944C817BD0E6922AE32BFF61F579D566ED39C0A1A19976C2C5F19`. PE dependency inspection lists only KERNEL32.dll and ole32.dll, with static CRT and no Media Foundation/FFmpeg dependency.
+
+All **59 existing tests passed against this exact DLL** (48 core, 11 UI), including all five input formats, orientations, partial blocks, analysis, immutable rendering/export and lifecycle cases. Test output DLL hashes match the native build. Managed and Native AOT builds completed without compiler or trim/AOT warnings. The dialog's sole reflection binding was replaced by a property-change subscription, detached when the dialog closes, so the Analyze button remains compatible with trimming and AOT.
+
+The actual Native AOT executable passed the Windows file-picker, JPEG analysis, result switching, reanalysis/Cancel, defaults and PNG export workflow. It loaded the image-only DLL from its own publish folder, with no CoreCLR loaded. Arabic/dark switching, localized summaries and unmirrored image content were captured, then the app closed with exit code 0. The framework-dependent executable separately passed the PNG workflow with JPEG-only checks omitted, retained 1280 x 800 export dimensions and the original SHA-256, and closed normally. Both stderr logs were empty. Native/source archive hashes, build logs, package size JSON, TRX results and screenshots are under `artifacts/verification/v1.3.1` and `artifacts/size-audit`. No forensic accuracy benchmark or exhaustive hardware-performance equivalence is claimed.
+
+Documentation and release notes are English. Arabic remains only in UI localization and localization/Unicode tests. The existing v1.3.0 GitHub release body was corrected to English as well.
+
+## Earlier validation (11 November 2026)
 
 Verified on Windows x64 with .NET SDK 10.0.404 / runtime 10.0.15, Avalonia 12.1.3, Insiyab.Avalonia 0.3.2 and OpenCV/OpenCvSharp 4.13.
 

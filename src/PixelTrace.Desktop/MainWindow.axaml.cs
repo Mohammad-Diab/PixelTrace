@@ -3,7 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using Avalonia.Data;
+using System.ComponentModel;
 using Insiyab.Avalonia.Controls;
 using PixelTrace.Desktop.Controls;
 using PixelTrace.Desktop.Diagnostics;
@@ -62,7 +62,11 @@ public sealed partial class MainWindow : Window
         var cancel = new Button { Content = draft.Text["Cancel"], Classes = { "secondary" } };
         var analyze = new Button { Content = draft.Text["Analyze"], Classes = { "primary" } };
         Dialog.SetResult(cancel, false); Dialog.SetResult(analyze, true);
-        analyze.Bind(IsEnabledProperty, new Binding(nameof(AnalysisDraft.CanSubmit)) { Source = draft });
+        analyze.IsEnabled = draft.CanSubmit;
+        void UpdateAnalyzeButton(object? source, PropertyChangedEventArgs change)
+        {
+            if (change.PropertyName is nameof(AnalysisDraft.CanSubmit) or null or "") analyze.IsEnabled = draft.CanSubmit;
+        }
         var dialog = new Dialog
         {
             Title = draft.Text[reanalysis ? "Reanalyze" : "Setup"], DataContext = draft,
@@ -71,9 +75,10 @@ public sealed partial class MainWindow : Window
             MinWidth = 420, MaxWidth = 520, ClosedBy = DialogClosedBy.CloseRequest
         };
         ActiveAnalysisDialog = dialog;
+        draft.PropertyChanged += UpdateAnalyzeButton;
         object? result;
         try { result = await dialog.ShowAsync(anchor); }
-        finally { ActiveAnalysisDialog = null; }
+        finally { draft.PropertyChanged -= UpdateAnalyzeButton; ActiveAnalysisDialog = null; }
         if (result is true && draft.CanSubmit && !_closing)
         {
             await _model.ExecuteDraftAsync(draft);

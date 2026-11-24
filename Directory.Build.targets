@@ -1,4 +1,10 @@
 <Project>
   <!-- Offline builds: suppress the Avalonia package's optional build telemetry target. -->
   <PropertyGroup><UsedAvaloniaProducts></UsedAvaloniaProducts></PropertyGroup>
+  <!-- NuGet native assets include large vendor PDBs that the SDK's symbol switch does not remove. -->
+  <Target Name="ExcludePublishDebugSymbols" AfterTargets="ComputeFilesToPublish" Condition="'$(PixelTraceCompactPublish)' == 'true'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
 </Project>

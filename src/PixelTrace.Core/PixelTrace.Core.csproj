@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260627" />
-    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260627" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="OpenCvSharp4.runtime.win.slim" Version="4.13.0.20260627" Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(PixelTraceNativeRuntime)' == ''" />
+    <Content Include="$(PixelTraceNativeRuntime)" Link="OpenCvSharpExtern.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="'$(PixelTraceNativeRuntime)' != ''" />
   </ItemGroup>
 </Project>

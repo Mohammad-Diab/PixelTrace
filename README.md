@@ -4,7 +4,16 @@ An offline .NET 10 / Avalonia 12 desktop workbench for local image-forensics exp
 
 ## Run on Windows x64
 
-Open **`artifacts/win-x64-v1.3.0/PixelTrace.exe`**. Keep the entire publish folder together. The publish is self-contained; a .NET installation is not required. The full OpenCV runtime uses the Windows Media Foundation OS feature; Windows N/Server installations must have that feature enabled.
+Download a Windows ZIP from [Releases](https://github.com/Mohammad-Diab/PixelTrace/releases), extract it completely, and run `PixelTrace.exe`. Keep the extracted files together.
+
+| Package | Extracted size | ZIP size | Requirement |
+| --- | ---: | ---: | --- |
+| Portable (`PixelTrace-win-x64-v1.3.1.zip`) | about 51 MiB | about 20 MiB | No .NET installation |
+| Smaller, framework-dependent (`PixelTrace-win-x64-v1.3.1-framework-dependent.zip`) | about 38 MiB | about 15 MiB | [.NET 10 x64 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/runtime) |
+
+The portable build uses Native AOT. Both packages preserve .NET 10, Avalonia 12.1.3, Insiyab.Avalonia 0.3.2 and OpenCvSharp 4.13.0.20260627. OpenCV 4.13.0 is built from pinned upstream sources with only `core`, `imgproc` and `imgcodecs`. JPEG, PNG, BMP, TIFF and WebP remain supported. Video/ML modules, FFmpeg, PDBs, unused CPU-dispatch variants and IPP/OpenCL acceleration are not shipped. The image-only native library uses a static C runtime and has no Media Foundation dependency. Disabling optional acceleration prioritizes package size; performance can vary by image and hardware.
+
+For local builds, the portable executable is `artifacts/win-x64-v1.3.1/PixelTrace.exe`; the framework-dependent executable is `artifacts/win-x64-v1.3.1-framework-dependent/PixelTrace.exe`.
 
 1. **Open image** (Ctrl+O) opens an Insiyab dialog. Pick/drop/paste an image using the library's FileUpload, choose the method and block/ELA settings, then **Analyze**. Cancel preserves the current image and results.
 2. The result appears over one image. **Show original**, beside the filename, shows the source while held; release to restore the overlay.
@@ -22,15 +31,27 @@ The summary is computed once from the independent maps, excluding Combined and u
 
 ## Build and verify
 
-Requires the .NET 10 SDK. The first restore downloads dependencies; running the built application is entirely offline.
+Requires a .NET SDK that targets .NET 10. The first restore downloads dependencies; running the application is entirely offline. Ordinary development builds use the official OpenCvSharp Slim runtime at the same pinned version.
 
 ```powershell
 dotnet restore PixelTrace.slnx
 dotnet build PixelTrace.slnx -c Release --no-restore
 dotnet test PixelTrace.slnx -c Release
-dotnet publish src/PixelTrace.Desktop/PixelTrace.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o artifacts/win-x64-v1.3.0
 dotnet run --project src/PixelTrace.Desktop
 ```
+
+Build the compact distribution with Visual Studio C++ build tools and CMake installed:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/Publish-Windows.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/Publish-Windows.ps1 -Mode FrameworkDependent -SkipNativeBuild
+```
+
+The script verifies the upstream source archive hashes, builds the image-only OpenCV runtime, tests against that exact DLL, publishes to an empty directory and produces ZIP/SHA-256 files. Native build intermediates are cached under the system temporary directory. Use `-SkipNativeBuild` to reuse the verified native output. `-SkipTests` is available for packaging an already-tested commit. `-OutputDirectory` selects a fresh destination. The two publish profiles live under `src/PixelTrace.Desktop/Properties/PublishProfiles`.
+
+Release notes, documentation and code comments are written in English. Arabic text is retained for the application's localization and the tests that exercise it or Unicode filenames.
+
+The source files tracked by Git occupy about 220 KiB. The earlier 321 MiB publish included about 100 MiB of vendor PDBs and 93 MiB of OpenCV/video binaries. `bin`, `obj`, old releases and verification evidence are generated files excluded from Git and from the downloadable application packages.
 
 Generate deterministic signal fixtures and all six exported maps:
 

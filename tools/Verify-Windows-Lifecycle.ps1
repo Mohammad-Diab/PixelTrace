@@ -1,7 +1,7 @@
-param([string]$PublishDirectory = 'artifacts/win-x64-v1.3.0')
+param([string]$PublishDirectory = 'artifacts/win-x64-v1.3.1')
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$evidence = Join-Path $root 'artifacts\verification\crash-fix'
+$evidence = Join-Path $root 'artifacts\verification\v1.3.1\lifecycle'
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
 $oldLogDirectory = $env:PIXELTRACE_LOG_DIRECTORY
 $env:PIXELTRACE_LOG_DIRECTORY = Join-Path $evidence 'diagnostics'
