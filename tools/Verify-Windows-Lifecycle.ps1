@@ -1,7 +1,10 @@
-param([string]$PublishDirectory = 'artifacts/win-x64-v1.3.1')
+param([string]$PublishDirectory = '')
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$evidence = Join-Path $root 'artifacts\verification\v1.3.1\lifecycle'
+[xml]$project = Get-Content -LiteralPath (Join-Path $root 'src/PixelTrace.Desktop/PixelTrace.Desktop.csproj')
+$version = $project.Project.PropertyGroup.Version
+if (!$PublishDirectory) { $PublishDirectory = "artifacts/win-x64-v$version" }
+$evidence = Join-Path $root "artifacts\verification\v$version\lifecycle"
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
 $oldLogDirectory = $env:PIXELTRACE_LOG_DIRECTORY
 $env:PIXELTRACE_LOG_DIRECTORY = Join-Path $evidence 'diagnostics'
